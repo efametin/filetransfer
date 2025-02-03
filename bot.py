@@ -174,5 +174,5 @@ async def main():
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
-loop = asyncio.get_event_loop()
-loop.create_task(main()) 
+if __name__ == "__main__":
+    asyncio.run(main())
