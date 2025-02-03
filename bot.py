@@ -2,11 +2,13 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message
 from aiogram.filters import Command
-from aiogram.utils import executor
+import asyncio
 
 # Telegram bot token (bunu öz tokeninlə əvəz et)
-TOKEN = "YOUR_BOT_TOKEN"
-ADMIN_IDS = {123456789}  # Adminlərin ID-lərini buraya daxil et
+TOKEN = "7675127420:AAFbt7343zQWIBJ9eiwNxpo46yf6DHGf1Kg"
+
+# Admin ID-ləri (buraya öz Telegram ID-lərinizi əlavə edin)
+ADMIN_IDS = {1958722880}  # Buraya adminlərin ID-lərini daxil et
 
 # Logger qur
 logging.basicConfig(level=logging.INFO)
@@ -24,11 +26,13 @@ async def start(message: Message):
     user_id = message.from_user.id
 
     # Parol yoxlaması
-    if user_id not in user_authenticated or not user_authenticated[user_id]:
+    if user_id not in user_authenticated:
+        user_authenticated[user_id] = False  # İstifadəçi parol doğrulamasından keçməyib
+
+    if not user_authenticated[user_id]:
         await message.answer("🔐 Botu istifadə etmək üçün parol daxil edin:")
         return
 
-    # Parol doğrulaması tamamlanıbsa, digər komandalar işləyə bilər
     await message.answer(
         "⚽ Futbol Matç Botuna xoş gəlmisiniz!\n\n"
         "🔹 Yeni matç yaratmaq üçün yalnız adminlər /createMatch istifadə edə bilər.\n"
@@ -97,5 +101,4 @@ async def main():
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    import asyncio
     asyncio.run(main())
