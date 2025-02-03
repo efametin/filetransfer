@@ -5,8 +5,8 @@ from aiogram.types import Message
 from aiogram.filters import Command
 
 # Telegram bot token (bunu öz tokeninlə əvəz et)
-TOKEN = "YOUR_BOT_TOKEN"
-ADMIN_IDS = {123456789}  # Adminlərin ID-lərini buraya daxil et
+TOKEN = "7675127420:AAFbt7343zQWIBJ9eiwNxpo46yf6DHGf1Kg"
+ADMIN_IDS = {1958722880}  # Adminlərin ID-lərini buraya daxil et
 PASSWORD = "777"  # Parol
 
 # Logger qur
