@@ -1,15 +1,13 @@
-import asyncio
 import logging
+import asyncio
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message
 from aiogram.filters import Command
-from datetime import datetime, timedelta
 
 # Telegram bot token (bunu öz tokeninlə əvəz et)
-TOKEN = "7675127420:AAFbt7343zQWIBJ9eiwNxpo46yf6DHGf1Kg"
-
-# Admin ID-ləri (buraya öz Telegram ID-lərinizi əlavə edin)
-ADMIN_IDS = {1958722880}  # Buraya adminlərin ID-lərini daxil et
+TOKEN = "YOUR_BOT_TOKEN"
+ADMIN_IDS = {123456789}  # Adminlərin ID-lərini buraya daxil et
+PASSWORD = "777"  # Parol
 
 # Logger qur
 logging.basicConfig(level=logging.INFO)
@@ -18,29 +16,38 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Oyunçuların siyahısı və cari oyun məlumatları
-players_list = []
-match_info = None  # Cari oyun məlumatları burda saxlanır
-match_message_id = None  # Oyun mesajının ID-sini saxlamaq üçün
-
 # Parol doğrulama üçün global dəyişən
 user_authenticated = {}
 
-# /start komandası
+# Helper funksiyalar
+
+def is_user_authenticated(user_id: int) -> bool:
+    """İstifadəçinin parol doğrulamasının olub olmadığını yoxlayır."""
+    return user_authenticated.get(user_id, False)
+
+def authenticate_user(user_id: int) -> None:
+    """İstifadəçini autentifikasiya edir."""
+    user_authenticated[user_id] = True
+
+def deauthenticate_user(user_id: int) -> None:
+    """İstifadəçini autentifikasiyadan çıxarır."""
+    if user_id in user_authenticated:
+        del user_authenticated[user_id]
+
+# Komanda funksiyaları
+
 @dp.message(Command("start"))
 async def start(message: Message):
+    """Botu başlatmaq üçün istifadə edilir."""
     user_id = message.from_user.id
 
-    if user_id not in user_authenticated:
-        user_authenticated[user_id] = False  # İstifadəçi parol doğrulamasından keçməyib
-
-    if not user_authenticated[user_id]:
-        await message.answer("🔐 Bu botu istifadə etmək üçün parol daxil edin:")
+    if not is_user_authenticated(user_id):
+        await message.answer("🔐 Botu istifadə etmək üçün parol daxil edin:")
         return
 
     await message.answer(
         "⚽ Futbol Matç Botuna xoş gəlmisiniz!\n\n"
-        "🔹 Yeni matç yaratmaq üçün yalnız adminlər /create_match istifadə edə bilər.\n"
+        "🔹 Yeni matç yaratmaq üçün yalnız adminlər /createMatch istifadə edə bilər.\n"
         "✅ Oyuna qoşulmaq üçün '+' yazın.\n"
         "❌ Oyundan çıxmaq üçün '-' yazın.\n"
         "📜 Oyunçu siyahısına baxmaq üçün /list yazın.\n"
@@ -48,125 +55,49 @@ async def start(message: Message):
         "ℹ Qaydaları öyrənmək üçün /help yazın."
     )
 
-# Parol doğrulama
 @dp.message()
 async def password_check(message: Message):
+    """Parol yoxlaması edir."""
     user_id = message.from_user.id
-    if user_authenticated.get(user_id, False):
+    if is_user_authenticated(user_id):
         return  # İstifadəçi artıq autentifikasiya olunub
 
-    if message.text == "777":  # Parol düzgün daxil edildikdə
-        user_authenticated[user_id] = True
+    if message.text == PASSWORD:  # Parol düzgün daxil edildikdə
+        authenticate_user(user_id)
         await message.answer("✅ Parol uğurla qəbul edildi!\nBot istifadə etməyə başlaya bilərsiniz.")
         await start(message)  # Parol daxil edildikdən sonra start mesajını yenidən göndəririk
         return
 
     await message.answer("⚠ Daxil etdiyiniz parol yanlışdır! Yenidən cəhd edin.")
 
-# 🛑 Yalnız adminlər matç yarada bilər
-@dp.message(Command("create_match"))
+@dp.message(Command("createMatch"))
 async def create_match(message: Message):
-    global match_info
-
+    """Yalnız adminlər üçün matç yaratma komandasını işləyir."""
     if message.from_user.id not in ADMIN_IDS:
         await message.answer("⛔ Bu əmri yalnız adminlər icra edə bilər!")
         return
 
-    match_info = {"location": "", "date_time": None, "notes": ""}
-    await message.answer("📍 Oyunun ünvanını göndərin:")
+    await message.answer("📍 Matç yaradılır... (Bura oyun yaradılma prosesi daxil edilə bilər)")
 
-# Ünvanı qəbul edirik
-@dp.message()
-async def match_details(message: Message):
-    global match_info, players_list, match_message_id
+@dp.message(Command("stop"))
+async def stop(message: Message):
+    """Botu dayandırır."""
+    await message.answer("🛑 Bot dayandırılır...")
+    await dp.stop_polling()  # Polling dayandırılır
 
-    user_id = message.from_user.id
-    user_name = message.from_user.full_name
-    text = message.text.strip()
+@dp.message(Command("sesver"))
+async def sesver(message: Message):
+    """Səsvermə başlatır."""
+    await message.answer("🎤 Səsvermə başladı! (Burada səsvermə prosesi daxil edilə bilər.)")
 
-    if match_info and not match_info["location"]:
-        match_info["location"] = text
-        await message.answer("🕒 Oyunun saatını (YYYY-MM-DD HH:MM) formatında yazın:")
-        return
+@dp.message(Command("elaqe"))
+async def elaqe(message: Message):
+    """Əlaqə məlumatlarını təqdim edir."""
+    await message.answer("📞 Əlaqə: example@example.com")
 
-    if match_info and not match_info["date_time"]:
-        try:
-            game_date = datetime.strptime(text, "%Y-%m-%d %H:%M")
-            if game_date < datetime.now() + timedelta(days=1):
-                await message.answer("⚠ Oyun yalnız sabah və ya daha sonraki tarixlər üçün yaradıla bilər.")
-                return
-            match_info["date_time"] = game_date
-            await message.answer("📝 Oyunun əlavə qeydlərini daxil edin:")
-        except ValueError:
-            await message.answer("⚠ Tarixi düzgün formatda daxil edin (YYYY-MM-DD HH:MM).")
-        return
-
-    if match_info and not match_info["notes"]:
-        match_info["notes"] = text
-
-        # ❌ Sil düyməsi olan inline keyboard yaradılır
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="❌ Oyunu sil", callback_data="delete_match")]
-        ])
-
-        sent_message = await message.answer(
-            f"✅ Yeni matç yaradıldı!\n\n📍 Ünvan: {match_info['location']}\n"
-            f"🕒 Vaxt: {match_info['date_time'].strftime('%Y-%m-%d %H:%M')}\n📝 Qeyd: {match_info['notes']}",
-            reply_markup=keyboard
-        )
-
-        match_message_id = sent_message.message_id  # Mesajın ID-sini saxla
-        return
-
-    # "+" və "-" ilə oyunçu siyahısını idarə etmək
-    if text == "+" or text == "-":
-        if match_info and match_info["date_time"]:
-            time_left = match_info["date_time"] - datetime.now()
-            if time_left <= timedelta(hours=1):
-                await message.answer("⛔ Oyun tarixinə 1 saat qaldığı üçün siyahıya qoşulmaq/çıxmaq mümkün deyil!")
-                return
-
-        if text == "+":
-            if user_name not in players_list:
-                players_list.append(user_name)
-                await bot.send_message(
-                    message.chat.id,
-                    f"✅ {user_name} oyuna qoşuldu!\n\n{get_player_list_text()}"
-                )
-            else:
-                await message.answer(f"⚠ {user_name} artıq siyahıdadır!")
-
-        elif text == "-":
-            if user_name in players_list:
-                players_list.remove(user_name)
-                await bot.send_message(
-                    message.chat.id,
-                    f"❌ {user_name} oyundan çıxdı!\n\n{get_player_list_text()}"
-                )
-            else:
-                await message.answer(f"⚠ {user_name} siyahıda yoxdur!")
-
-# /list komandası - cari oyunçular siyahısını göstərir
-@dp.message(Command("list"))
-async def show_players(message: Message):
-    await message.answer(get_player_list_text())
-
-# /oyun komandası - cari matç məlumatını göstərir
-@dp.message(Command("oyun"))
-async def show_match(message: Message):
-    if match_info and match_info["date_time"]:
-        await message.answer(
-            f"📍 Oyun Məlumatları:\n"
-            f"📌 Ünvan: {match_info['location']}\n"
-            f"🕒 Vaxt: {match_info['date_time'].strftime('%Y-%m-%d %H:%M')}\n"
-            f"📝 Qeyd: {match_info['notes']}"
-        )
-    else:
-        await message.answer("❌ Hələ ki oyun yoxdur.")
-
-# /help komandası - qaydaları göstərir
 @dp.message(Command("help"))
 async def show_help(message: Message):
+    """Botun istifadə qaydalarını göstərir."""
     await message.answer(
         "ℹ **Futbol Matç Bot Qaydaları:**\n\n"
         "✅ **Oyuna qoşulmaq üçün:** + yazın.\n"
@@ -177,32 +108,12 @@ async def show_help(message: Message):
         "🛑 **Yalnız adminlər matç yarada bilər.**"
     )
 
-# Oyunu silmək üçün callback
-@dp.callback_query(lambda c: c.data == "delete_match")
-async def delete_match(callback_query: types.CallbackQuery):
-    global match_info, players_list, match_message_id
-
-    if callback_query.from_user.id not in ADMIN_IDS:
-        await callback_query.answer("⛔ Bu əmri yalnız adminlər icra edə bilər!", show_alert=True)
-        return
-
-    match_info = None
-    players_list.clear()
-    await bot.delete_message(callback_query.message.chat.id, match_message_id)
-    await callback_query.message.answer("❌ Oyun silindi!")
-
-# /stop komandası - botu dayandırır
-@dp.message(Command("stop"))
-async def stop(message: Message):
-    await message.answer("🛑 Bot dayandırılır...")
-    await dp.stop_polling()  # Polling dayandırılır
-
-# Helper funksiya - oyunçu siyahısını qaytarır
-def get_player_list_text():
-    return "📜 Cari oyunçular siyahısı:\n" + "\n".join(f"🔹 {player}" for player in players_list) if players_list else "🚫 Siyahıda heç kim yoxdur."
-
+# Botu işə salan əsas funksiya
 async def main():
-    await dp.start_polling(bot)
+    try:
+        await dp.start_polling(bot)
+    except Exception as e:
+        logging.error(f"Botu işə salan zaman səhv baş verdi: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main())  # Kodun başlatılması
