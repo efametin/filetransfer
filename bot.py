@@ -58,6 +58,7 @@ async def password_check(message: Message):
     if message.text == "777":  # Parol düzgün daxil edildikdə
         user_authenticated[user_id] = True
         await message.answer("✅ Parol uğurla qəbul edildi!\nBot istifadə etməyə başlaya bilərsiniz.")
+        await start(message)  # Parol daxil edildikdən sonra start mesajını yenidən göndəririk
         return
 
     await message.answer("⚠ Daxil etdiyiniz parol yanlışdır! Yenidən cəhd edin.")
