@@ -1,29 +1,29 @@
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, CallbackContext
 
 # /start əmri
-def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Hazırlanır...')
+async def start(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text('Hazırlanır...')
 
 # /stop əmri - Botu dayandırır
-def stop(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Bot dayandırıldı.')
-    context.application.stop()
+async def stop(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text('Bot dayandırıldı.')
+    await context.application.stop()
 
 # /create əmri
-def create(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Hazırlanır...')
+async def create(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text('Hazırlanır...')
 
 # /vote əmri
-def vote(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Hazırlanır...')
+async def vote(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text('Hazırlanır...')
 
 # /list əmri
-def list(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Hazırlanır...')
+async def list(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text('Hazırlanır...')
 
 # /help əmri - Botun əmr siyahısını göstərir
-def help(update: Update, context: CallbackContext) -> None:
+async def help(update: Update, context: CallbackContext) -> None:
     help_text = (
         "Əmrlər:\n"
         "/start - Botu başlat\n"
@@ -33,28 +33,23 @@ def help(update: Update, context: CallbackContext) -> None:
         "/list - Mövcud siyahını göstər\n"
         "/help - Yardım və əmrlər siyahısını göstər"
     )
-    update.message.reply_text(help_text)
+    await update.message.reply_text(help_text)
 
-def main() -> None:
+async def main() -> None:
     # Tokeni daxil edin
-    updater = Updater("7675127420:AAFbt7343zQWIBJ9eiwNxpo46yf6DHGf1Kg")
-
-    # Dispatcher əldə edin
-    dispatcher = updater.dispatcher
+    application = Application.builder().token("7675127420:AAFbt7343zQWIBJ9eiwNxpo46yf6DHGf1Kg").build()
 
     # Əmrləri əlavə edin
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("stop", stop))
-    dispatcher.add_handler(CommandHandler("create", create))
-    dispatcher.add_handler(CommandHandler("vote", vote))
-    dispatcher.add_handler(CommandHandler("list", list))
-    dispatcher.add_handler(CommandHandler("help", help))  # /help əmri əlavə olundu
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("stop", stop))
+    application.add_handler(CommandHandler("create", create))
+    application.add_handler(CommandHandler("vote", vote))
+    application.add_handler(CommandHandler("list", list))
+    application.add_handler(CommandHandler("help", help))  # /help əmri əlavə olundu
 
     # Botu işə salın
-    updater.start_polling()
-
-    # Botu dayandırmaq üçün
-    updater.idle()
+    await application.run_polling()
 
 if __name__ == '__main__':
-    main()
+    import asyncio
+    asyncio.run(main())
