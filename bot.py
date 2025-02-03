@@ -1,4 +1,3 @@
-import nest_asyncio
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher, types
@@ -24,9 +23,21 @@ players_list = []
 match_info = None  # Cari oyun məlumatları burda saxlanır
 match_message_id = None  # Oyun mesajının ID-sini saxlamaq üçün
 
+# Parol doğrulama üçün global dəyişən
+user_authenticated = {}
+
 # /start komandası
 @dp.message(Command("start"))
 async def start(message: Message):
+    user_id = message.from_user.id
+
+    if user_id not in user_authenticated:
+        user_authenticated[user_id] = False  # İstifadəçi parol doğrulamasından keçməyib
+
+    if not user_authenticated[user_id]:
+        await message.answer("🔐 Bu botu istifadə etmək üçün parol daxil edin:")
+        return
+
     await message.answer(
         "⚽ Futbol Matç Botuna xoş gəlmisiniz!\n\n"
         "🔹 Yeni matç yaratmaq üçün yalnız adminlər /create_match istifadə edə bilər.\n"
@@ -36,6 +47,20 @@ async def start(message: Message):
         "📅 Cari oyun məlumatları üçün /oyun yazın.\n"
         "ℹ Qaydaları öyrənmək üçün /help yazın."
     )
+
+# Parol doğrulama
+@dp.message()
+async def password_check(message: Message):
+    user_id = message.from_user.id
+    if user_authenticated.get(user_id, False):
+        return  # İstifadəçi artıq autentifikasiya olunub
+
+    if message.text == "777":  # Parol düzgün daxil edildikdə
+        user_authenticated[user_id] = True
+        await message.answer("✅ Parol uğurla qəbul edildi!\nBot istifadə etməyə başlaya bilərsiniz.")
+        return
+
+    await message.answer("⚠ Daxil etdiyiniz parol yanlışdır! Yenidən cəhd edin.")
 
 # 🛑 Yalnız adminlər matç yarada bilər
 @dp.message(Command("create_match"))
@@ -165,13 +190,17 @@ async def delete_match(callback_query: types.CallbackQuery):
     await bot.delete_message(callback_query.message.chat.id, match_message_id)
     await callback_query.message.answer("❌ Oyun silindi!")
 
+# /stop komandası - botu dayandırır
+@dp.message(Command("stop"))
+async def stop(message: Message):
+    await message.answer("🛑 Bot dayandırılır...")
+    await dp.stop_polling()  # Polling dayandırılır
+
 # Helper funksiya - oyunçu siyahısını qaytarır
 def get_player_list_text():
     return "📜 Cari oyunçular siyahısı:\n" + "\n".join(f"🔹 {player}" for player in players_list) if players_list else "🚫 Siyahıda heç kim yoxdur."
 
-nest_asyncio.apply()
 async def main():
-    await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
