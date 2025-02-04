@@ -234,7 +234,10 @@ def main():
     application.add_handler(CommandHandler("info", info))
     application.add_handler(CommandHandler("contact", contact))
     application.add_handler(CommandHandler("about", about))
-    application.add_handler(CommandHandler("oyun_yarat", oyun_yarat))
+    
+    # Add game creation handler
+    application.add_handler(game_handler)
+    application.add_handler(CallbackQueryHandler(delete_game, pattern=r"delete_game_\d+"))
 
     # Add error handler
     application.add_error_handler(error_handler)
