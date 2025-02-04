@@ -166,8 +166,11 @@ async def set_extra_info(update: Update, context: CallbackContext):
 
     keyboard = [
     [InlineKeyboardButton("❌ SİL", callback_data=f"delete_game_{user_id}")],
-    [InlineKeyboardButton("🏁 Oyunu Bitir", callback_data=f"finish_game_{user_id}")]
+    [InlineKeyboardButton("🏁 Oyunu Bitir", callback_data=f"finish_game_{user_id}")],
+    [InlineKeyboardButton("✅ OYUNA GƏLİRƏM", callback_data=f"join_game_{user_id}"),
+     InlineKeyboardButton("❌ GƏLƏ BİLMİRƏM", callback_data=f"leave_game_{user_id}")]
 ]
+
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -242,6 +245,32 @@ async def list_participants(update: Update, context: CallbackContext):
     await update.message.reply_text(f"🎮 **İştirakçılar:**\n{participant_list}")
 
 
+async def funksiyalar(update: Update, context: CallbackContext):
+    """Shows all available commands in the bot."""
+    commands_list = (
+        "🤖 **Botun Mövcud Əmrləri:**\n\n"
+        "🔹 `/start` - Botu başladır və qarşılama mesajı göstərir\n"
+        "🔹 `/help` - Botun kömək mesajını göstərir\n"
+        "🔹 `/info` - Bot haqqında məlumat verir\n"
+        "🔹 `/contact` - Əlaqə məlumatlarını göstərir\n"
+        "🔹 `/about` - Layihə haqqında məlumat verir\n"
+        "🔹 `/oyunyarat` - Yeni oyun yaradır (yalnız adminlər üçün)\n"
+        "🔹 `/oyun` - Hazırda aktiv oyunun məlumatlarını göstərir\n"
+        "🔹 `/oyunubitir` - Oyunu bitir və nəticələri qeyd edir\n"
+        "🔹 `/list` - Oyunda iştirak edənlərin siyahısını göstərir\n"
+        "🔹 `+` - Oyuna qoşulmaq üçün istifadə olunur\n"
+        "🔹 `-` - Oyundan çıxmaq üçün istifadə olunur\n"
+        "🔹 `/funksiyalar` - Botun bütün funksiyalarını göstərir\n\n"
+        "📌 **Bundan əlavə, aşağıdakı butonlar da var:**\n"
+        "✅ **OYUNA GƏLİRƏM** - Oyunda iştirak etməyi təsdiqləyir\n"
+        "❌ **GƏLƏ BİLMİRƏM** - Oyundan imtina edir\n"
+        "❌ **SİL** - Oyunu silir (yalnız yaradan şəxs istifadə edə bilər)\n"
+        "🏁 **OYUNU BİTİR** - Oyunun nəticələrini qeydə alır\n"
+    )
+
+    await update.message.reply_text(commands_list)
+
+
 async def handle_participation(update: Update, context: CallbackContext):
     """Handles users joining or leaving the game with + or - messages."""
     user_id = update.effective_user.id
@@ -265,6 +294,42 @@ async def handle_participation(update: Update, context: CallbackContext):
         participants.discard(username)
         await list_participants(update, context)
 
+async def join_game(update: Update, context: CallbackContext):
+    """Handles a user joining the game via button."""
+    query = update.callback_query
+    user_id = int(query.data.split("_")[-1])
+    username = query.from_user.first_name
+
+    if user_id not in active_games:
+        await query.answer("❌ Bu oyun artıq mövcud deyil!", show_alert=True)
+        return
+
+    game = active_games[user_id]
+    participants = game["participants"]
+
+    if len(participants) >= 14:
+        await query.answer("⚠️ Oyunda maksimum 14 nəfər iştirak edə bilər!", show_alert=True)
+        return
+    
+    participants.add(username)
+    await query.answer("✅ Oyuna əlavə olundunuz!")
+    await list_participants(update, context)
+
+async def leave_game(update: Update, context: CallbackContext):
+    """Handles a user leaving the game via button."""
+    query = update.callback_query
+    user_id = int(query.data.split("_")[-1])
+    username = query.from_user.first_name
+
+    if user_id not in active_games:
+        await query.answer("❌ Bu oyun artıq mövcud deyil!", show_alert=True)
+        return
+
+    game = active_games[user_id]
+    game["participants"].discard(username)
+    
+    await query.answer("❌ Oyundan çıxarıldınız!")
+    await list_participants(update, context)
 
 
 async def set_score(update: Update, context: CallbackContext):
@@ -325,6 +390,7 @@ def main():
 
     application.add_handler(game_handler)
     application.add_handler(CommandHandler("list", list_participants, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
+    application.add_handler(CommandHandler("funksiyalar", funksiyalar, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_participation))
 
     finish_game_handler = ConversationHandler(
@@ -336,6 +402,9 @@ def main():
     fallbacks=[]
 )
     application.add_handler(finish_game_handler)
+    application.add_handler(CallbackQueryHandler(join_game, pattern=r"join_game_\d+"))
+    application.add_handler(CallbackQueryHandler(leave_game, pattern=r"leave_game_\d+"))
+
     application.add_handler(CallbackQueryHandler(delete_game, pattern=r"delete_game_\d+"))
     application.add_error_handler(error_handler)
 
