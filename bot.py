@@ -4,7 +4,6 @@ import os
 import signal
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackContext
-from dotenv import load_dotenv
 
 # Configure logging
 logging.basicConfig(
@@ -18,9 +17,8 @@ logger = logging.getLogger(__name__)
 MINI_APP_URL = "https://make-ton-telegram-mini-app-1.vercel.app/"
 WELCOME_IMAGE_PATH = 'preview.png'
 
-# Load environment variables
-load_dotenv()
-TOKEN = os.getenv('7675127420:AAFbt7343zQWIBJ9eiwNxpo46yf6DHGf1Kg')
+# Token hardcoded directly in the code
+TOKEN = '7675127420:AAFbt7343zQWIBJ9eiwNxpo46yf6DHGf1Kg'
 
 # Message texts
 WELCOME_MESSAGE = (
