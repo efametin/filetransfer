@@ -163,7 +163,11 @@ async def set_extra_info(update: Update, context: CallbackContext):
         "creator": user_id
     }
 
-    keyboard = [[InlineKeyboardButton("❌ SİL", callback_data=f"delete_game_{user_id}")]]
+    keyboard = [
+    [InlineKeyboardButton("❌ SİL", callback_data=f"delete_game_{user_id}")],
+    [InlineKeyboardButton("🏁 Oyunu Bitir", callback_data=f"finish_game_{user_id}")]
+]
+
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     game_info = (
@@ -205,6 +209,50 @@ async def oyun(update: Update, context: CallbackContext):
 
     await update.message.reply_text(game_info)
 
+async def oyunubitir(update: Update, context: CallbackContext):
+    """Starts the game finishing process by requesting match score."""
+    query = update.callback_query
+    user_id = query.from_user.id
+
+    if user_id not in active_games:
+        await query.answer("Hazırda aktiv oyun yoxdur!", show_alert=True)
+        return
+
+    context.user_data["finishing_game"] = user_id
+    await query.message.reply_text("📊 Oyunun hesabını daxil edin:")
+    return "SCORE"
+
+async def set_score(update: Update, context: CallbackContext):
+    """Stores the score and asks who won the game."""
+    context.user_data["score"] = update.message.text
+    await update.message.reply_text("🏆 Oyunu kim qazandı? (Komanda 1 / Komanda 2 / Heç-heçə)")
+    return "WINNER"
+
+async def set_winner(update: Update, context: CallbackContext):
+    """Stores the winner and finishes the game."""
+    user_id = context.user_data.get("finishing_game")
+
+    if not user_id or user_id not in active_games:
+        await update.message.reply_text("❌ Xəta baş verdi, oyun tapılmadı!")
+        return ConversationHandler.END
+
+    context.user_data["winner"] = update.message.text
+    game = active_games.pop(user_id)  # Oyunu silirik, çünki bitdi
+
+    game_summary = (
+        f"🏁 **Oyun Bitdi!**\n\n"
+        f"📍 **Məkan:** {game['location']}\n"
+        f"⏰ **Vaxt:** {game['time']}\n"
+        f"📄 **Əlavə məlumat:** {game['extra_info']}\n"
+        f"📊 **Hesab:** {context.user_data['score']}\n"
+        f"🏆 **Qalib:** {context.user_data['winner']}\n\n"
+        f"🔔 **İndi isə /sesver komandasını yazaraq oyunun ən yaxşısını seçək!** 🎖️"
+    )
+
+    await update.message.reply_text(game_summary)
+    return ConversationHandler.END
+
+
 def signal_handler(signum, frame):
     logger.info('Signal received, shutting down...')
     exit(0)
@@ -231,6 +279,15 @@ def main():
     )
 
     application.add_handler(game_handler)
+    finish_game_handler = ConversationHandler(
+    entry_points=[CallbackQueryHandler(oyunubitir, pattern=r"finish_game_\d+")],
+    states={
+        "SCORE": [MessageHandler(filters.TEXT & ~filters.COMMAND, set_score)],
+        "WINNER": [MessageHandler(filters.TEXT & ~filters.COMMAND, set_winner)]
+    },
+    fallbacks=[]
+)
+    application.add_handler(finish_game_handler)
     application.add_handler(CallbackQueryHandler(delete_game, pattern=r"delete_game_\d+"))
     application.add_error_handler(error_handler)
 
