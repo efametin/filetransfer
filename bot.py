@@ -167,8 +167,8 @@ async def set_extra_info(update: Update, context: CallbackContext):
     keyboard = [
     [InlineKeyboardButton("❌ SİL", callback_data=f"delete_game_{user_id}")],
     [InlineKeyboardButton("🏁 Oyunu Bitir", callback_data=f"finish_game_{user_id}")],
-    [InlineKeyboardButton("✅ OYUNA GƏLİRƏM", callback_data=f"join_game_{user_id}"),
-     InlineKeyboardButton("❌ GƏLƏ BİLMİRƏM", callback_data=f"leave_game_{user_id}")]
+    [InlineKeyboardButton("✅ OYUNA GƏLİRƏM", callback_data=f"join_game_{user_id}")],
+    [InlineKeyboardButton("❌ GƏLƏ BİLMİRƏM", callback_data=f"leave_game_{user_id}")]
 ]
 
 
@@ -295,41 +295,16 @@ async def handle_participation(update: Update, context: CallbackContext):
         await list_participants(update, context)
 
 async def join_game(update: Update, context: CallbackContext):
-    """Handles a user joining the game via button."""
-    query = update.callback_query
-    user_id = int(query.data.split("_")[-1])
-    username = query.from_user.first_name
-
-    if user_id not in active_games:
-        await query.answer("❌ Bu oyun artıq mövcud deyil!", show_alert=True)
-        return
-
-    game = active_games[user_id]
-    participants = game["participants"]
-
-    if len(participants) >= 14:
-        await query.answer("⚠️ Oyunda maksimum 14 nəfər iştirak edə bilər!", show_alert=True)
-        return
-    
-    participants.add(username)
-    await query.answer("✅ Oyuna əlavə olundunuz!")
-    await list_participants(update, context)
+    """Handles a user joining the game via button (same as sending '+')."""
+    update.message = update.callback_query.message  # Query-dən mesajı al
+    update.message.text = "+"  # Mesajı "+" kimi qəbul et
+    await handle_participation(update, context)  # Mövcud funksiyanı çağır
 
 async def leave_game(update: Update, context: CallbackContext):
-    """Handles a user leaving the game via button."""
-    query = update.callback_query
-    user_id = int(query.data.split("_")[-1])
-    username = query.from_user.first_name
-
-    if user_id not in active_games:
-        await query.answer("❌ Bu oyun artıq mövcud deyil!", show_alert=True)
-        return
-
-    game = active_games[user_id]
-    game["participants"].discard(username)
-    
-    await query.answer("❌ Oyundan çıxarıldınız!")
-    await list_participants(update, context)
+    """Handles a user leaving the game via button (same as sending '-')."""
+    update.message = update.callback_query.message  # Query-dən mesajı al
+    update.message.text = "-"  # Mesajı "-" kimi qəbul et
+    await handle_participation(update, context)  # Mövcud funksiyanı çağır
 
 
 async def set_score(update: Update, context: CallbackContext):
