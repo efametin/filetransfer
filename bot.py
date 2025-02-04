@@ -75,6 +75,7 @@ GAME_CREATION_PASSWORD = "12345"
 
 # Dictionary to store ongoing game details
 active_games = {}
+vote_data = {}
 
 async def start(update: Update, context: CallbackContext):
     logger.info(f"User {update.effective_user.id} started the bot")
@@ -166,9 +167,7 @@ async def set_extra_info(update: Update, context: CallbackContext):
 
     keyboard = [
     [InlineKeyboardButton("❌ SİL", callback_data=f"delete_game_{user_id}")],
-    [InlineKeyboardButton("🏁 Oyunu Bitir", callback_data=f"finish_game_{user_id}")],
-    [InlineKeyboardButton("✅ OYUNA GƏLİRƏM", callback_data=f"join_game_{user_id}")],
-    [InlineKeyboardButton("❌ GƏLƏ BİLMİRƏM", callback_data=f"leave_game_{user_id}")]
+    [InlineKeyboardButton("🏁 Oyunu Bitir", callback_data=f"finish_game_{user_id}")]
 ]
 
 
@@ -245,6 +244,65 @@ async def list_participants(update: Update, context: CallbackContext):
     await update.message.reply_text(f"🎮 **İştirakçılar:**\n{participant_list}")
 
 
+async def sesver(update: Update, context: CallbackContext):
+    """Shows the list of participants for voting and allows users to vote."""
+    user_id = update.effective_user.id
+
+    if user_id not in active_games:
+        await update.message.reply_text("❌ Hazırda aktiv oyun yoxdur, səsvermə mümkün deyil.")
+        return
+
+    game = active_games[user_id]
+    participants = list(game["participants"])
+
+    if not participants:
+        await update.message.reply_text("📜 Oyunda iştirak edən yoxdur, səsvermə başlaya bilməz!")
+        return
+
+    # Səsvermə üçün inline keyboard yaradılır
+    keyboard = [[InlineKeyboardButton(name, callback_data=f"vote_{name}")] for name in participants]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text("🗳 **Oyunun ən yaxşı oyunçusuna səs verin!**", reply_markup=reply_markup)
+
+async def vote_handler(update: Update, context: CallbackContext):
+    """Handles user votes and prevents multiple votes."""
+    query = update.callback_query
+    voter = query.from_user.id
+    selected_player = query.data.split("_")[-1]
+
+    if voter in vote_data:
+        await query.answer("❌ Siz artıq səs vermisiniz!", show_alert=True)
+        return
+
+    vote_data[voter] = selected_player
+
+    await query.answer("✅ Səsiniz qeydə alındı!")
+
+
+async def announce_winner(context: CallbackContext):
+    """Announces the best player after 1 hour of voting."""
+    if not vote_data:
+        return  # Heç kim səs verməyibsə, heç nə etmə
+
+    vote_count = {}
+    for player in vote_data.values():
+        vote_count[player] = vote_count.get(player, 0) + 1
+
+    # Ən çox səs alan oyunçunu tap
+    best_player = max(vote_count, key=vote_count.get)
+
+    # Qrupu ID kimi götürərək mesaj göndər
+    chat_id = list(active_games.keys())[0]  # İlk oyunun olduğu qrup
+    await context.bot.send_message(chat_id, f"🏆 **Oyunun ən yaxşısı {best_player} oldu!** 🎖")
+
+    # Səsvermə məlumatlarını sıfırla
+    vote_data.clear()
+
+
+
+
+
 async def funksiyalar(update: Update, context: CallbackContext):
     """Shows all available commands in the bot."""
     commands_list = (
@@ -260,6 +318,7 @@ async def funksiyalar(update: Update, context: CallbackContext):
         "🔹 `/list` - Oyunda iştirak edənlərin siyahısını göstərir\n"
         "🔹 `+` - Oyuna qoşulmaq üçün istifadə olunur\n"
         "🔹 `-` - Oyundan çıxmaq üçün istifadə olunur\n"
+        "🔹 `/sesver` - Oyunun ən yaxşı oyunçusuna səs vermək üçün istifadə olunur\n"
         "🔹 `/funksiyalar` - Botun bütün funksiyalarını göstərir\n\n"
         "📌 **Bundan əlavə, aşağıdakı butonlar da var:**\n"
         "✅ **OYUNA GƏLİRƏM** - Oyunda iştirak etməyi təsdiqləyir\n"
@@ -294,18 +353,6 @@ async def handle_participation(update: Update, context: CallbackContext):
         participants.discard(username)
         await list_participants(update, context)
 
-async def join_game(update: Update, context: CallbackContext):
-    """Handles a user joining the game via button (same as sending '+')."""
-    update.message = update.callback_query.message  # Query-dən mesajı al
-    update.message.text = "+"  # Mesajı "+" kimi qəbul et
-    await handle_participation(update, context)  # Mövcud funksiyanı çağır
-
-async def leave_game(update: Update, context: CallbackContext):
-    """Handles a user leaving the game via button (same as sending '-')."""
-    update.message = update.callback_query.message  # Query-dən mesajı al
-    update.message.text = "-"  # Mesajı "-" kimi qəbul et
-    await handle_participation(update, context)  # Mövcud funksiyanı çağır
-
 
 async def set_score(update: Update, context: CallbackContext):
     """Stores the score and asks who won the game."""
@@ -335,6 +382,9 @@ async def set_winner(update: Update, context: CallbackContext):
     )
 
     await update.message.reply_text(game_summary)
+    await update.message.reply_text("🗳 **İndi /sesver yazaraq oyunun ən yaxşısını seçə bilərsiniz!** 🎖️")
+    # 1 saat sonra ən yaxşı oyunçunu elan et
+    context.job_queue.run_once(announce_winner, 3600)
     return ConversationHandler.END
 
 
@@ -366,6 +416,8 @@ def main():
     application.add_handler(game_handler)
     application.add_handler(CommandHandler("list", list_participants, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CommandHandler("funksiyalar", funksiyalar, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
+    application.add_handler(CommandHandler("sesver", sesver, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
+    application.add_handler(CallbackQueryHandler(vote_handler, pattern=r"vote_.*"))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_participation))
 
     finish_game_handler = ConversationHandler(
