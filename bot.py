@@ -160,7 +160,8 @@ async def set_extra_info(update: Update, context: CallbackContext):
         "location": context.user_data["location"],
         "time": context.user_data["time"],
         "extra_info": context.user_data["extra_info"],
-        "creator": user_id
+        "creator": user_id,
+        "participants": set()
     }
 
     keyboard = [
@@ -222,6 +223,50 @@ async def oyunubitir(update: Update, context: CallbackContext):
     await query.message.reply_text("📊 Oyunun hesabını daxil edin:")
     return "SCORE"
 
+async def list_participants(update: Update, context: CallbackContext):
+    """Lists all participants of the current game."""
+    user_id = update.effective_user.id
+
+    if user_id not in active_games:
+        await update.message.reply_text("❌ Oyun yoxdur, iştirakçı siyahısı boşdur.")
+        return
+
+    game = active_games[user_id]
+    participants = game["participants"]
+
+    if not participants:
+        await update.message.reply_text("📜 Hazırda oyunda iştirak edən yoxdur.")
+        return
+
+    participant_list = "\n".join([f"• {p}" for p in participants])
+    await update.message.reply_text(f"🎮 **İştirakçılar:**\n{participant_list}")
+
+
+async def handle_participation(update: Update, context: CallbackContext):
+    """Handles users joining or leaving the game with + or - messages."""
+    user_id = update.effective_user.id
+    username = update.effective_user.first_name
+
+    if user_id not in active_games:
+        return  # Heç bir oyun yoxdursa, cavab vermə
+
+    game = active_games[user_id]
+    participants = game["participants"]
+
+    if update.message.text == "+":
+        if len(participants) >= 14:
+            await update.message.reply_text("⚠️ Oyunda maksimum 14 nəfər iştirak edə bilər!")
+            return
+        
+        participants.add(username)
+        await list_participants(update, context)
+
+    elif update.message.text == "-":
+        participants.discard(username)
+        await list_participants(update, context)
+
+
+
 async def set_score(update: Update, context: CallbackContext):
     """Stores the score and asks who won the game."""
     context.user_data["score"] = update.message.text
@@ -279,6 +324,9 @@ def main():
     )
 
     application.add_handler(game_handler)
+    application.add_handler(CommandHandler("list", list_participants, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_participation))
+
     finish_game_handler = ConversationHandler(
     entry_points=[CallbackQueryHandler(oyunubitir, pattern=r"finish_game_\d+")],
     states={
