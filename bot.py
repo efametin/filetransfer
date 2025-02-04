@@ -429,9 +429,6 @@ def main():
     fallbacks=[]
 )
     application.add_handler(finish_game_handler)
-    application.add_handler(CallbackQueryHandler(join_game, pattern=r"join_game_\d+"))
-    application.add_handler(CallbackQueryHandler(leave_game, pattern=r"leave_game_\d+"))
-
     application.add_handler(CallbackQueryHandler(delete_game, pattern=r"delete_game_\d+"))
     application.add_error_handler(error_handler)
 
