@@ -187,6 +187,24 @@ async def delete_game(update: Update, context: CallbackContext):
     else:
         await query.answer("Bu oyunu silməyə icazəniz yoxdur!", show_alert=True)
 
+async def oyun(update: Update, context: CallbackContext):
+    """Shows the details of the currently active game."""
+    user_id = update.effective_user.id
+
+    if user_id not in active_games:
+        await update.message.reply_text("❌ Hazırda yaradılmış oyun yoxdur.")
+        return
+
+    game = active_games[user_id]
+    game_info = (
+        f"🎮 **Aktiv Oyun:**\n\n"
+        f"📍 **Məkan:** {game['location']}\n"
+        f"⏰ **Vaxt:** {game['time']}\n"
+        f"📄 **Əlavə məlumat:** {game['extra_info']}\n"
+    )
+
+    await update.message.reply_text(game_info)
+
 def signal_handler(signum, frame):
     logger.info('Signal received, shutting down...')
     exit(0)
@@ -199,6 +217,7 @@ def main():
     application.add_handler(CommandHandler("info", info))
     application.add_handler(CommandHandler("contact", contact))
     application.add_handler(CommandHandler("about", about))
+    application.add_handler(CommandHandler("oyun", oyun, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
 
     game_handler = ConversationHandler(
         entry_points=[CommandHandler("oyunyarat", oyun_yarat)],
