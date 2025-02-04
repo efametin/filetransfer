@@ -116,6 +116,14 @@ async def about(update: Update, context: CallbackContext):
     logger.info(f"User {update.effective_user.id} requested about info")
     await update.message.reply_text(ABOUT_MESSAGE)
 
+async def error_handler(update: Update, context: CallbackContext):
+    logger.error(f"Update {update} caused error {context.error}")
+    if update and update.effective_message:
+        await update.effective_message.reply_text(
+            "Sorry, something went wrong. Please try again later."
+        )
+
+
 async def oyun_yarat(update: Update, context: CallbackContext):
     """Starts the game creation process by requesting a password."""
     await update.message.reply_text("🔑 Oyunu yaratmaq üçün şifrə daxil edin:")
