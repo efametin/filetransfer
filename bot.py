@@ -2,8 +2,8 @@ import logging
 import sys
 import os
 import signal
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackContext
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import Application, CommandHandler, CallbackContext, ConversationHandler, MessageHandler, filters
 
 # Configure logging
 logging.basicConfig(
@@ -16,6 +16,15 @@ logger = logging.getLogger(__name__)
 # Constants
 MINI_APP_URL = "https://make-ton-telegram-mini-app-1.vercel.app/"
 WELCOME_IMAGE_PATH = 'preview.png'
+
+# State constants for ConversationHandler
+PASSWORD, LOCATION, TIME, EXTRA_INFO, CONFIRMATION = range(5)
+
+# Set a predefined password
+GAME_CREATION_PASSWORD = "12345"
+
+# Dictionary to store ongoing game details
+active_games = {}
 
 # Token hardcoded directly in the code
 TOKEN = '7675127420:AAFbt7343zQWIBJ9eiwNxpo46yf6DHGf1Kg'
@@ -113,6 +122,95 @@ async def about(update: Update, context: CallbackContext):
     await update.message.reply_text(ABOUT_MESSAGE)
 
 
+
+
+async def oyun_yarat(update: Update, context: CallbackContext):
+    """Starts the game creation process by requesting a password."""
+    await update.message.reply_text("🔑 Oyunu yaratmaq üçün şifrə daxil edin:")
+    return PASSWORD
+
+async def check_password(update: Update, context: CallbackContext):
+    """Verifies the entered password."""
+    if update.message.text != GAME_CREATION_PASSWORD:
+        await update.message.reply_text("❌ Şifrə yalnışdır! Yenidən cəhd edin.")
+        return ConversationHandler.END
+    
+    await update.message.reply_text("📍 Oyun keçiriləcək məkanı daxil edin:")
+    return LOCATION
+
+async def set_location(update: Update, context: CallbackContext):
+    """Sets the game location."""
+    context.user_data["location"] = update.message.text
+    await update.message.reply_text("⏰ Oyun vaxtını daxil edin:")
+    return TIME
+
+async def set_time(update: Update, context: CallbackContext):
+    """Sets the game time."""
+    context.user_data["time"] = update.message.text
+    await update.message.reply_text("📄 Əlavə məlumatları daxil edin:")
+    return EXTRA_INFO
+
+async def set_extra_info(update: Update, context: CallbackContext):
+    """Sets additional game details and confirms creation."""
+    context.user_data["extra_info"] = update.message.text
+    user_id = update.effective_user.id
+
+    # Store the game details
+    active_games[user_id] = {
+        "location": context.user_data["location"],
+        "time": context.user_data["time"],
+        "extra_info": context.user_data["extra_info"],
+        "creator": user_id
+    }
+
+    keyboard = [[InlineKeyboardButton("❌ SİL", callback_data=f"delete_game_{user_id}")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    game_info = (
+        f"✅ **Oyun yaradıldı!**\n\n"
+        f"📍 **Məkan:** {context.user_data['location']}\n"
+        f"⏰ **Vaxt:** {context.user_data['time']}\n"
+        f"📄 **Əlavə məlumat:** {context.user_data['extra_info']}\n"
+    )
+
+    await update.message.reply_text(game_info, reply_markup=reply_markup)
+    return ConversationHandler.END
+
+async def delete_game(update: Update, context: CallbackContext):
+    """Deletes the created game if the user is the creator."""
+    query = update.callback_query
+    user_id = query.from_user.id
+
+    if user_id in active_games:
+        del active_games[user_id]
+        await query.message.edit_text("🗑️ Oyun uğurla silindi!")
+    else:
+        await query.answer("Bu oyunu silməyə icazəniz yoxdur!", show_alert=True)
+
+async def cancel(update: Update, context: CallbackContext):
+    """Cancels the game creation process."""
+    await update.message.reply_text("🚫 Oyun yaradılması ləğv edildi.", reply_markup=ReplyKeyboardRemove())
+    return ConversationHandler.END
+
+# Define the conversation handler
+game_handler = ConversationHandler(
+    entry_points=[CommandHandler("oyunyarat", oyun_yarat)],
+    states={
+        PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_password)],
+        LOCATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_location)],
+        TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_time)],
+        EXTRA_INFO: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_extra_info)]
+    },
+    fallbacks=[CommandHandler("cancel", cancel)]
+)
+
+# Add handlers to the bot
+application.add_handler(game_handler)
+application.add_handler(CallbackQueryHandler(delete_game, pattern=r"delete_game_\d+"))
+
+
+
+
 async def error_handler(update: Update, context: CallbackContext):
     logger.error(f"Update {update} caused error {context.error}")
     if update and update.effective_message:
@@ -136,6 +234,7 @@ def main():
     application.add_handler(CommandHandler("info", info))
     application.add_handler(CommandHandler("contact", contact))
     application.add_handler(CommandHandler("about", about))
+    application.add_handler(CommandHandler("oyun_yarat", oyun_yarat))
 
     # Add error handler
     application.add_error_handler(error_handler)
