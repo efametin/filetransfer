@@ -30,6 +30,12 @@ GAME_CREATION_PASSWORD = "1234"
 active_games = {}
 vote_data = {}
 
+# Bitmiş oyun iştirakçılarını saxlayan dictionary
+finished_games_participants = {}
+
+# Bitmiş oyunların siyahısını saxlamaq üçün dictionary
+finished_games = []
+
 async def start(update: Update, context: CallbackContext):
     """Həmişə sabit mesaj qaytaran sadə `/start` funksiyası."""
     await update.message.reply_text(
@@ -221,18 +227,30 @@ async def set_game_score(update: Update, context: CallbackContext):
 
 async def set_winner_team(update: Update, context: CallbackContext):
     """Qalib komandanı təyin edir və oyunu yekunlaşdırır."""
+    if not update.message.text.strip():
+        await update.message.reply_text("❌ Düzgün qalib komandanın adını daxil edin:")
+        return "WINNER_TEAM"
+
     context.user_data["winner_team"] = update.message.text
-    chat_id = update.effective_chat.id  # Qrupun ID-sini al
+    chat_id = update.effective_chat.id  
 
     if chat_id in active_games:
-        game = active_games.pop(chat_id)  # Oyun məlumatlarını sil
-        participants = game["participants"]  # Oyun iştirakçılarını al
+        game = active_games.pop(chat_id)  
+        participants = game["participants"]
 
-        # İştirakçıları səsvermə üçün əlavə et
-        for participant in participants:
-            vote_data[participant] = 0  # Səsverməyə sıfırdan başla
+        # **Bitmiş oyun iştirakçılarını yadda saxla**
+        finished_games_participants[chat_id] = list(participants)
 
-        # Qrupda yekun mesaj
+        # **Bitmiş oyunu yadda saxla**
+        finished_games.append({
+            "chat_id": chat_id,
+            "location": game["location"],
+            "time": game["time"],
+            "extra_info": game["extra_info"],
+            "score": context.user_data["game_score"],
+            "winner_team": context.user_data["winner_team"]
+        })
+
         final_message = (
             f"🏁 Oyun başa çatdı!\n\n"
             f"📊 **Hesab:** {context.user_data['game_score']}\n"
@@ -247,20 +265,41 @@ async def set_winner_team(update: Update, context: CallbackContext):
 
 
 
+async def bitmishoyunlar(update: Update, context: CallbackContext):
+    """Bitmiş oyunların siyahısını göstərir."""
+    if not finished_games:
+        await update.message.reply_text("🔍 Hələ ki, heç bir bitmiş oyun yoxdur.")
+        return
+
+    result_text = "🏆 **Bitmiş Oyunlar:**\n\n"
+
+    for idx, game in enumerate(finished_games, start=1):
+        result_text += (
+            f"🔹 **Oyun {idx}**\n"
+            f"📍 **Məkan:** {game['location']}\n"
+            f"⏰ **Vaxt:** {game['time']}\n"
+            f"📄 **Əlavə məlumat:** {game['extra_info']}\n"
+            f"📊 **Hesab:** {game['score']}\n"
+            f"🏆 **Qalib Komanda:** {game['winner_team']}\n"
+            f"-------------------------\n"
+        )
+
+    await update.message.reply_text(result_text)
+
+
 
 async def sesver(update: Update, context: CallbackContext):
     """Shows the list of participants for voting and allows users to vote."""
     chat_id = update.effective_chat.id
 
-    if chat_id not in active_games:
-        await update.message.reply_text("❌ Hazırda aktiv oyun yoxdur, səsvermə mümkün deyil.")
-        return
-
-    game = active_games[chat_id]
-    participants = list(game["participants"])
+    # **Əgər aktiv oyun yoxdursa, bitmiş oyunlara bax**
+    participants = active_games.get(chat_id, {}).get("participants", [])
+    
+    if not participants:
+        participants = finished_games_participants.get(chat_id, [])  # Bitmiş oyun iştirakçılarını götür
 
     if not participants:
-        await update.message.reply_text("📜 Oyunda iştirak edən yoxdur, səsvermə başlaya bilməz!")
+        await update.message.reply_text("❌ Hazırda səsvermə mümkün deyil, çünki oyunçular siyahısı boşdur.")
         return
 
     # Səsvermə üçün inline keyboard yaradılır
@@ -424,6 +463,7 @@ def main():
 
     application.add_handler(game_handler)
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("bitmishoyunlar", bitmishoyunlar))
     delete_game_handler = ConversationHandler(
     entry_points=[CommandHandler("oyunusil", oyunusil)],
     states={
