@@ -31,7 +31,11 @@ active_games = {}
 vote_data = {}
 
 async def start(update: Update, context: CallbackContext):
-    """Requests a password to start the bot."""
+    """Requests a password to start the bot only if not already running."""
+    if context.bot_data.get("started", False):
+        await update.message.reply_text("⚡ Bot artıq aktivdir!")
+        return ConversationHandler.END
+    
     await update.message.reply_text("🔑 Botu başlatmaq üçün kodu daxil edin:")
     return "START_CONFIRM"
 
@@ -41,6 +45,7 @@ async def start_confirm(update: Update, context: CallbackContext):
         await update.message.reply_text("❌ Kod yalnışdır! Bot başlamadı.")
         return ConversationHandler.END
 
+    context.bot_data["started"] = True  # Botun başladığını qeyd edirik
     await update.message.reply_text(
         "Futbol Bot başladıldı!\n\n"
         "✅ Artıq botun funksiyalarından istifadə edə bilərsiniz.\n"
@@ -49,6 +54,7 @@ async def start_confirm(update: Update, context: CallbackContext):
     )
 
     return ConversationHandler.END
+
 
 
 async def error_handler(update: Update, context: CallbackContext):
