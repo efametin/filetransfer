@@ -193,6 +193,61 @@ async def check_delete_password(update: Update, context: CallbackContext):
     return ConversationHandler.END
 
 
+async def oyunubitir(update: Update, context: CallbackContext):
+    """Aktiv oyunu bitirmək üçün şifrə tələb edir və qalib komandanı müəyyənləşdirir."""
+    chat_id = update.effective_chat.id  # Qrupun ID-sini al
+
+    if chat_id not in active_games:  # Əgər aktiv oyun yoxdursa
+        await update.message.reply_text("❌ Hazırda bitiriləcək aktiv oyun yoxdur.")
+        return
+
+    await update.message.reply_text("🔑 Oyunu bitirmək üçün şifrəni daxil edin:")
+    return "FINISH_PASSWORD"
+
+async def check_finish_password(update: Update, context: CallbackContext):
+    """Şifrəni yoxlayır və oyunu bitirmək prosesinə davam edir."""
+    if update.message.text != GAME_CREATION_PASSWORD:  # Əgər şifrə yanlışdırsa
+        await update.message.reply_text("❌ Şifrə yanlışdır! Oyun bitirilmədi.")
+        return ConversationHandler.END
+
+    await update.message.reply_text("📊 Oyunun hesabını daxil edin:")
+    return "GAME_SCORE"
+
+async def set_game_score(update: Update, context: CallbackContext):
+    """Oyun hesabını təyin edir."""
+    context.user_data["game_score"] = update.message.text
+    await update.message.reply_text("🏆 Qalib komandanın adını daxil edin:")
+    return "WINNER_TEAM"
+
+async def set_winner_team(update: Update, context: CallbackContext):
+    """Qalib komandanı təyin edir və oyunu yekunlaşdırır."""
+    context.user_data["winner_team"] = update.message.text
+    chat_id = update.effective_chat.id  # Qrupun ID-sini al
+
+    if chat_id in active_games:
+        game = active_games.pop(chat_id)  # Oyun məlumatlarını sil
+        participants = game["participants"]  # Oyun iştirakçılarını al
+
+        # İştirakçıları səsvermə üçün əlavə et
+        for participant in participants:
+            vote_data[participant] = 0  # Səsverməyə sıfırdan başla
+
+        # Qrupda yekun mesaj
+        final_message = (
+            f"🏁 Oyun başa çatdı!\n\n"
+            f"📊 **Hesab:** {context.user_data['game_score']}\n"
+            f"🏆 **Qalib Komanda:** {context.user_data['winner_team']}\n\n"
+            f"🗳 Oyun bitib, artıq oyunun ən yaxşısını seçmək üçün `/sesver` əmrini yaza bilərsiniz!"
+        )
+
+        await update.message.reply_text(final_message)
+
+    return ConversationHandler.END
+
+
+
+
+
 async def sesver(update: Update, context: CallbackContext):
     """Shows the list of participants for voting and allows users to vote."""
     chat_id = update.effective_chat.id
@@ -386,6 +441,19 @@ def main():
     application.add_handler(CommandHandler("mengelmirem", mengelmirem, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CallbackQueryHandler(vote_handler, pattern=r"vote_.*"))
 
+    finish_game_handler = ConversationHandler(
+    entry_points=[CommandHandler("oyunubitir", oyunubitir)],
+    states={
+        "FINISH_PASSWORD": [MessageHandler(filters.TEXT & ~filters.COMMAND, check_finish_password)],
+        "GAME_SCORE": [MessageHandler(filters.TEXT & ~filters.COMMAND, set_game_score)],
+        "WINNER_TEAM": [MessageHandler(filters.TEXT & ~filters.COMMAND, set_winner_team)]
+    },
+    fallbacks=[]
+)
+
+    # Yeni handleri əsas tətbiqə əlavə et
+    application.add_handler(finish_game_handler)
+    
     application.add_handler(CallbackQueryHandler(join_game, pattern=r"join_game_\d+"))
     application.add_handler(CallbackQueryHandler(leave_game, pattern=r"leave_game_\d+"))
     application.add_error_handler(error_handler)
