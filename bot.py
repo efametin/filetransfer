@@ -32,10 +32,10 @@ vote_data = {}
 
 async def start(update: Update, context: CallbackContext):
     """Bot artıq işləyirsə, şifrə tələb etməsin."""
-    if context.bot_data.get("started", False):
+    if context.application.bot_data.get("started", False):  # Əvvəlki dəyəri yoxla
         await update.message.reply_text("⚡ Bot artıq aktivdir!")
-        return ConversationHandler.END
-    
+        return ConversationHandler.END  # Heç nə etmədən çıx
+
     await update.message.reply_text("🔑 Botu başlatmaq üçün kodu daxil edin:")
     return "START_CONFIRM"
 
@@ -45,14 +45,13 @@ async def start_confirm(update: Update, context: CallbackContext):
         await update.message.reply_text("❌ Kod yalnışdır! Bot başlamadı.")
         return ConversationHandler.END
 
-    context.bot_data["started"] = True  # Botun başladığını qeyd edirik
+    context.application.bot_data["started"] = True  # Botun başladığını yadda saxla
     await update.message.reply_text(
         "Futbol Bot başladıldı!\n\n"
         "✅ Artıq botun funksiyalarından istifadə edə bilərsiniz.\n"
         "📌 Bütün funksiyaları bilmək üçün `/funksiyalar` əmrini istifadə edin!",
         parse_mode="Markdown"
     )
-
     return ConversationHandler.END
 
 async def error_handler(update: Update, context: CallbackContext):
@@ -61,7 +60,6 @@ async def error_handler(update: Update, context: CallbackContext):
         await update.effective_message.reply_text(
             "Sorry, something went wrong. Please try again later."
         )
-
 
 async def oyun_yarat(update: Update, context: CallbackContext):
     """Starts the game creation process by requesting a password."""
