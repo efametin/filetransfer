@@ -150,7 +150,7 @@ async def oyunubitir(update: Update, context: CallbackContext):
 
 async def check_finish_password(update: Update, context: CallbackContext):
     """Verifies the password and proceeds to game finishing process."""
-    if update.message.text != GAME_CREATION_PASSWORD:  # Əgər parol yanlışdırsa
+    if update.message.text.strip() != GAME_CREATION_PASSWORD:  # Şifrəni boşluqlardan təmizləyək
         await update.message.reply_text("❌ Parol yanlışdır! Oyun bitirilmədi.")
         return ConversationHandler.END
 
@@ -161,7 +161,6 @@ async def check_finish_password(update: Update, context: CallbackContext):
 
     await update.message.reply_text("📊 Oyunun hesabını daxil edin:")
     return "SCORE"
-
 
 async def list_participants(update: Update, context: CallbackContext):
     """Lists all participants of the current game."""
@@ -399,15 +398,12 @@ async def set_winner(update: Update, context: CallbackContext):
         f"📄 Əlavə məlumat: {game['extra_info']}\n"
         f"📊 Hesab: {context.user_data['score']}\n"
         f"🏆 Qalib: {context.user_data['winner']}\n\n"
-        f"🔔 Indi isə /sesver komandasını yazaraq oyunun ən yaxşısını seçək!** 🎖️"
+        f"🔔 Indi isə /sesver komandasını yazaraq oyunun ən yaxşısını seçək! 🎖️"
     )
 
     await update.message.reply_text(game_summary)
     await update.message.reply_text("🗳 **İndi /sesver yazaraq oyunun ən yaxşısını seçə bilərsiniz!** 🎖️")
-    # 1 saat sonra ən yaxşı oyunçunu elan et
-    context.job_queue.run_once(announce_winner, 3600)
     return ConversationHandler.END
-
 
 def signal_handler(signum, frame):
     logger.info('Signal received, shutting down...')
@@ -441,6 +437,19 @@ def main():
     fallbacks=[]
 )
     application.add_handler(delete_game_handler)
+
+    finish_game_handler = ConversationHandler(
+    entry_points=[CommandHandler("oyunubitir", oyunubitir)],
+    states={
+        "FINISH_PASSWORD": [MessageHandler(filters.TEXT & ~filters.COMMAND, check_finish_password)],
+        "SCORE": [MessageHandler(filters.TEXT & ~filters.COMMAND, set_score)],
+        "WINNER": [MessageHandler(filters.TEXT & ~filters.COMMAND, set_winner)]
+    },
+    fallbacks=[]
+)
+    application.add_handler(finish_game_handler)
+
+    
     application.add_handler(CommandHandler("list", list_participants, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CommandHandler("funksiyalar", funksiyalar, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CommandHandler("komek", komek, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
