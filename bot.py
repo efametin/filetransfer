@@ -1,6 +1,7 @@
 import logging
 import sys
 import os
+import random
 import signal
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, CallbackContext, ConversationHandler, MessageHandler, filters, CallbackQueryHandler
@@ -302,24 +303,43 @@ async def sesver(update: Update, context: CallbackContext):
         await update.message.reply_text("❌ Hazırda səsvermə mümkün deyil, çünki oyunçular siyahısı boşdur.")
         return
 
-    # Səsvermə üçün inline keyboard yaradılır
-    keyboard = [[InlineKeyboardButton(name, callback_data=f"vote_{name}")] for name in participants]
+    # **Hər iştirakçının aldığı səs sayını əldə et**
+    keyboard = []
+    for participant in participants:
+        vote_count = sum(1 for v in vote_data.values() if v == participant)  # Səs sayını hesabla
+        button_text = f"{participant} - {vote_count} səs"  # İştirakçının yanında səs sayı göstərilsin
+        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"vote_{participant}")])
+
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text("🗳 Oyunun ən yaxşı oyunçusuna səs verin!", reply_markup=reply_markup)
 
+
+
 async def vote_handler(update: Update, context: CallbackContext):
-    """Handles user votes and prevents multiple votes."""
+    """Handles user votes and updates vote counts in real-time."""
     query = update.callback_query
     voter = query.from_user.id
     selected_player = query.data.split("_")[-1]
+    chat_id = query.message.chat_id
 
     if voter in vote_data:
         await query.answer("❌ Siz artıq səs vermisiniz!", show_alert=True)
         return
 
-    vote_data[voter] = selected_player
+    vote_data[voter] = selected_player  # İstifadəçinin səsini yadda saxla
 
+    # **Yeni inline keyboard yaradılır ki, səs sayları yenilənsin**
+    participants = finished_games_participants.get(chat_id, [])
+    keyboard = []
+    for participant in participants:
+        vote_count = sum(1 for v in vote_data.values() if v == participant)  # Səs sayını hesabla
+        button_text = f"{participant} - {vote_count} səs"
+        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"vote_{participant}")])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.message.edit_text("🗳 Oyunun ən yaxşı oyunçusuna səs verin!", reply_markup=reply_markup)
     await query.answer("✅ Səsiniz qeydə alındı!")
 
 
@@ -332,15 +352,24 @@ async def announce_winner(context: CallbackContext):
     for player in vote_data.values():
         vote_count[player] = vote_count.get(player, 0) + 1
 
-    # Ən çox səs alan oyunçunu tap
-    best_player = max(vote_count, key=vote_count.get)
+    # Ən çox səs alan maksimum neçə səs alıb?
+    max_votes = max(vote_count.values(), default=0)
+
+    # Ən çox səs alan oyunçuları seç
+    top_players = [player for player, count in vote_count.items() if count == max_votes]
+
+    # Əgər birdən çox oyunçu eyni səsləri alıbsa, təsadüfi seçim et
+    best_player = random.choice(top_players)
 
     # Qrupu ID kimi götürərək mesaj göndər
-    chat_id = list(active_games.keys())[0]  # İlk oyunun olduğu qrup
-    await context.bot.send_message(chat_id, f"🏆 Oyunun ən yaxşısı {best_player} oldu! 🎖")
+    chat_id = list(finished_games_participants.keys())[0]  # Ən son bitən oyunun qrupu
+    await context.bot.send_message(chat_id, f"🏆 Oyunun ən yaxşısı **{best_player}** oldu! 🎖")
 
-    # Səsvermə məlumatlarını sıfırla
+    # **Səsvermə məlumatlarını sıfırla**
     vote_data.clear()
+    finished_games_participants.pop(chat_id, None)  # Bitmiş oyun iştirakçılarını da sil
+
+
 
 
 async def funksiyalar(update: Update, context: CallbackContext):
