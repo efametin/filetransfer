@@ -1,9 +1,27 @@
 import logging
 import sys
 import os
+import json
 import signal
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, CallbackContext, ConversationHandler, MessageHandler, filters, CallbackQueryHandler
+
+BOT_DATA_FILE = "bot_data.json"
+
+def load_bot_data():
+    """Botun əvvəl başladığını yoxlamaq üçün məlumatları yükləyir."""
+    if os.path.exists(BOT_DATA_FILE):
+        with open(BOT_DATA_FILE, "r") as file:
+            return json.load(file)
+    return {}
+
+def save_bot_data(data):
+    """Botun məlumatlarını faylda saxlayır."""
+    with open(BOT_DATA_FILE, "w") as file:
+        json.dump(data, file)
+
+# Bot başlayanda məlumatları yükləyirik
+bot_data = load_bot_data()
 
 # Configure logging
 logging.basicConfig(
@@ -32,7 +50,7 @@ vote_data = {}
 
 async def start(update: Update, context: CallbackContext):
     """Bot artıq işləyirsə, şifrə tələb etməsin."""
-    if context.application.bot_data.get("started", False):  # Əvvəlki dəyəri yoxla
+    if bot_data.get("started", False):  # Fayldan məlumat oxuyuruq
         await update.message.reply_text("⚡ Bot artıq aktivdir!")
         return ConversationHandler.END  # Heç nə etmədən çıx
 
@@ -45,7 +63,9 @@ async def start_confirm(update: Update, context: CallbackContext):
         await update.message.reply_text("❌ Kod yalnışdır! Bot başlamadı.")
         return ConversationHandler.END
 
-    context.application.bot_data["started"] = True  # Botun başladığını yadda saxla
+    bot_data["started"] = True  # Botun başladığını yadda saxla
+    save_bot_data(bot_data)  # Məlumatı faylda saxla
+
     await update.message.reply_text(
         "Futbol Bot başladıldı!\n\n"
         "✅ Artıq botun funksiyalarından istifadə edə bilərsiniz.\n"
@@ -153,17 +173,15 @@ async def komek(update: Update, context: CallbackContext):
     await update.message.reply_text(help_text)
 
 async def oyunubitir(update: Update, context: CallbackContext):
-    """Starts the game finishing process by requesting a password first."""
-    query = update.callback_query
-    chat_id = update.effective_chat.id  # Qrupun ID-sini al
-
+    """Oyunu bitirmək üçün parolu yoxlayır."""
+    chat_id = update.effective_chat.id  # Düzgün istifadə
     if chat_id not in active_games:
-        await query.answer("Hazırda aktiv oyun yoxdur!", show_alert=True)
-        return
+        await update.message.reply_text("❌ Hal-hazırda bitiriləcək oyun yoxdur.")
+        return ConversationHandler.END
 
     context.user_data["finishing_game"] = chat_id
-    await query.message.reply_text("🔑 Oyunu bitirmək üçün parolu daxil edin:")
-    return "FINISH_PASSWORD"  # Parolu yoxlama mərhələsinə keçir
+    await update.message.reply_text("🔑 Oyunu bitirmək üçün parolu daxil edin:")
+    return "FINISH_PASSWORD"  # Şifrə yoxlama mərhələsinə keçir
 
 async def check_finish_password(update: Update, context: CallbackContext):
     """Verifies the password and proceeds to game finishing process."""
