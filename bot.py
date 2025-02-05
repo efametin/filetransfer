@@ -153,7 +153,7 @@ async def komek(update: Update, context: CallbackContext):
 async def oyunubitir(update: Update, context: CallbackContext):
     """Starts the game finishing process by requesting a password first."""
     query = update.callback_query
-    chat_id = query.message.chat_id  # Qrupun ID-sini al
+    chat_id = update.effective_chat.id  # Qrupun ID-sini al
 
     if chat_id not in active_games:
         await query.answer("Hazırda aktiv oyun yoxdur!", show_alert=True)
@@ -446,6 +446,7 @@ def main():
     )
 
     application.add_handler(game_handler)
+    application.add_handler(CommandHandler("oyunubitir", oyunubitir))
     delete_game_handler = ConversationHandler(
     entry_points=[CommandHandler("oyunusil", oyunusil)],
     states={
