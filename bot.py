@@ -1,27 +1,9 @@
 import logging
 import sys
 import os
-import json
 import signal
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, CallbackContext, ConversationHandler, MessageHandler, filters, CallbackQueryHandler
-
-BOT_DATA_FILE = "bot_data.json"
-
-def load_bot_data():
-    """Botun əvvəl başladığını yoxlamaq üçün məlumatları yükləyir."""
-    if os.path.exists(BOT_DATA_FILE):
-        with open(BOT_DATA_FILE, "r") as file:
-            return json.load(file)
-    return {}
-
-def save_bot_data(data):
-    """Botun məlumatlarını faylda saxlayır."""
-    with open(BOT_DATA_FILE, "w") as file:
-        json.dump(data, file)
-
-# Bot başlayanda məlumatları yükləyirik
-bot_data = load_bot_data()
 
 # Configure logging
 logging.basicConfig(
@@ -49,30 +31,13 @@ active_games = {}
 vote_data = {}
 
 async def start(update: Update, context: CallbackContext):
-    """Bot artıq işləyirsə, şifrə tələb etməsin."""
-    if bot_data.get("started", False):  # Fayldan məlumat oxuyuruq
-        await update.message.reply_text("⚡ Bot artıq aktivdir!")
-        return ConversationHandler.END  # Heç nə etmədən çıx
-
-    await update.message.reply_text("🔑 Botu başlatmaq üçün kodu daxil edin:")
-    return "START_CONFIRM"
-
-async def start_confirm(update: Update, context: CallbackContext):
-    """Şifrəni yoxlayır və botu başladır."""
-    if update.message.text != START_PASSWORD:
-        await update.message.reply_text("❌ Kod yalnışdır! Bot başlamadı.")
-        return ConversationHandler.END
-
-    bot_data["started"] = True  # Botun başladığını yadda saxla
-    save_bot_data(bot_data)  # Məlumatı faylda saxla
-
+    """Həmişə sabit mesaj qaytaran sadə `/start` funksiyası."""
     await update.message.reply_text(
         "Futbol Bot başladıldı!\n\n"
         "✅ Artıq botun funksiyalarından istifadə edə bilərsiniz.\n"
-        "📌 Bütün funksiyaları bilmək üçün `/funksiyalar` əmrini istifadə edin!",
-        parse_mode="Markdown"
+        "📌 Bütün funksiyaları bilmək üçün `/funksiyalar` əmrini istifadə edin!"
     )
-    return ConversationHandler.END
+
 
 async def error_handler(update: Update, context: CallbackContext):
     logger.error(f"Update {update} caused error {context.error}")
