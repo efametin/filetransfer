@@ -206,6 +206,33 @@ async def list_participants(update: Update, context: CallbackContext):
     await update.message.reply_text(f"🎮 Oyun Məlumatları:\n\n{game_info}\n🎮 Oyuna gələnlər:\n{participant_list}")
 
 
+async def oyunusil(update: Update, context: CallbackContext):
+    """Aktiv oyunu silmək üçün şifrə tələb edir."""
+    chat_id = update.effective_chat.id  # Qrupun ID-sini al
+
+    if chat_id not in active_games:  # Əgər aktiv oyun yoxdursa
+        await update.message.reply_text("❌ Hal-hazırda silinə biləcək aktiv oyun yoxdur.")
+        return
+
+    await update.message.reply_text("🔑 Oyunu silmək üçün şifrəni daxil edin:")
+    return "DELETE_PASSWORD"
+
+async def check_delete_password(update: Update, context: CallbackContext):
+    """Şifrəni yoxlayır və oyunu silir."""
+    if update.message.text != GAME_CREATION_PASSWORD:  # Əgər şifrə yanlışdırsa
+        await update.message.reply_text("❌ Şifrə yanlışdır! Oyun silinmədi.")
+        return ConversationHandler.END
+
+    chat_id = update.effective_chat.id  # Qrupun ID-sini al
+
+    if chat_id in active_games:  # Əgər oyun mövcuddursa, onu sil
+        del active_games[chat_id]
+        await update.message.reply_text("🗑️ Oyun uğurla silindi!")
+    else:
+        await update.message.reply_text("❌ Artıq silinə biləcək aktiv oyun yoxdur.")
+
+    return ConversationHandler.END
+
 
 async def sesver(update: Update, context: CallbackContext):
     """Shows the list of participants for voting and allows users to vote."""
@@ -267,11 +294,12 @@ async def funksiyalar(update: Update, context: CallbackContext):
     """Shows all available commands in the bot."""
     commands_list = (
         "🤖 Futbol botun mövcud əmrləri:\n\n"
-        "🔹 `/start` - Botu başladır (Şifrə ilə işləyir)\n"
-        "🔹 `/oyunyarat` - Yeni oyun yaradır (yalnız adminlər üçün)\n"
-        "🔹 `/oyunubitir` - Oyunu bitir və nəticələri qeyd edir\n"
+        "🤖 Admin əmrləri:\n\n"
+        "🔹 `/start` - Botu başladır \n"
+        "🔹 `/oyunyarat` - Yeni oyun yaradır \n"
+        "🔹 `/oyunubitir` - Oyunu bitirir və nəticələri qeyd edir \n"
+        "🔹 `/oyunusil` - Oyunu silir \n"
         "🔹 `/funksiyalar` - Botun bütün funksiyalarını göstərir\n\n"
-
         "🔹 `/oyun` - Hazırda aktiv oyunun məlumatlarını göstərir\n"
 
         "🔹 `/list` - Oyunda iştirak edənlərin siyahısını göstərir\n"
@@ -362,9 +390,6 @@ async def mengelmirem(update: Update, context: CallbackContext):
     await update.message.reply_text(f"❌ {username} oyundan çıxdı!")  # Təsdiq mesajı
     await list_participants(update, context)  # Yenilənmiş siyahını göstər
 
-
-
-
 async def set_score(update: Update, context: CallbackContext):
     """Stores the score and asks who won the game."""
     context.user_data["score"] = update.message.text
@@ -383,13 +408,13 @@ async def set_winner(update: Update, context: CallbackContext):
     game = active_games.pop(chat_id)  # Oyunu silirik, çünki bitdi
 
     game_summary = (
-        f"🏁 **Oyun Bitdi!**\n\n"
-        f"📍 **Məkan:** {game['location']}\n"
-        f"⏰ **Vaxt:** {game['time']}\n"
-        f"📄 **Əlavə məlumat:** {game['extra_info']}\n"
-        f"📊 **Hesab:** {context.user_data['score']}\n"
-        f"🏆 **Qalib:** {context.user_data['winner']}\n\n"
-        f"🔔 **İndi isə /sesver komandasını yazaraq oyunun ən yaxşısını seçək!** 🎖️"
+        f"🏁 Oyun Bitdi!\n\n"
+        f"📍 Məkan: {game['location']}\n"
+        f"⏰ Vaxt: {game['time']}\n"
+        f"📄 Əlavə məlumat: {game['extra_info']}\n"
+        f"📊 Hesab: {context.user_data['score']}\n"
+        f"🏆 Qalib: {context.user_data['winner']}\n\n"
+        f"🔔 Indi isə /sesver komandasını yazaraq oyunun ən yaxşısını seçək!** 🎖️"
     )
 
     await update.message.reply_text(game_summary)
@@ -421,6 +446,14 @@ def main():
     )
 
     application.add_handler(game_handler)
+    delete_game_handler = ConversationHandler(
+    entry_points=[CommandHandler("oyunusil", oyunusil)],
+    states={
+        "DELETE_PASSWORD": [MessageHandler(filters.TEXT & ~filters.COMMAND, check_delete_password)]
+    },
+    fallbacks=[]
+)
+    application.add_handler(delete_game_handler)
     application.add_handler(CommandHandler("list", list_participants, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CommandHandler("funksiyalar", funksiyalar, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CommandHandler("komek", komek, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
