@@ -254,8 +254,8 @@ async def set_winner_team(update: Update, context: CallbackContext):
 
         final_message = (
             f"🏁 Oyun başa çatdı!\n\n"
-            f"📊 **Hesab:** {context.user_data['game_score']}\n"
-            f"🏆 **Qalib Komanda:** {context.user_data['winner_team']}\n\n"
+            f"📊 Hesab: {context.user_data['game_score']}\n"
+            f"🏆 Qalib Komanda: {context.user_data['winner_team']}\n\n"
             f"🗳 Oyun bitib, artıq oyunun ən yaxşısını seçmək üçün `/sesver` əmrini yaza bilərsiniz!"
         )
 
@@ -276,12 +276,12 @@ async def bitmishoyunlar(update: Update, context: CallbackContext):
 
     for idx, game in enumerate(finished_games, start=1):
         result_text += (
-            f"🔹 **Oyun {idx}**\n"
-            f"📍 **Məkan:** {game['location']}\n"
-            f"⏰ **Vaxt:** {game['time']}\n"
-            f"📄 **Əlavə məlumat:** {game['extra_info']}\n"
-            f"📊 **Hesab:** {game['score']}\n"
-            f"🏆 **Qalib Komanda:** {game['winner_team']}\n"
+            f"🔹 Oyun {idx}\n"
+            f"📍 Məkan: {game['location']}\n"
+            f"⏰ Vaxt: {game['time']}\n"
+            f"📄 Əlavə məlumat: {game['extra_info']}\n"
+            f"📊 Hesab: {game['score']}\n"
+            f"🏆 Qalib Komanda: {game['winner_team']}\n"
             f"-------------------------\n"
         )
 
@@ -378,12 +378,13 @@ async def funksiyalar(update: Update, context: CallbackContext):
         "🤖 Futbol botun mövcud əmrləri:\n\n"
         "🔹 `/start` - Botu başladır \n"
         "🔹 `/funksiyalar` - Botun bütün funksiyalarını göstərir\n"
-        "🔹 `/oyun` - Hazırda aktiv oyunun məlumatlarını göstərir\n"
+        "🔹 `/oyun` - Hazirda aktiv oyunun məlumatlarını göstərir\n"
         "🔹 `/oyunagelirem` - Oyuna qoşulmaq üçün istifadə olunur\n"
         "🔹 `/mengelmirem` - Oyundan çıxmaq üçün istifadə olunur\n"
         "🔹 `/list` - Oyunda iştirak edənlərin siyahısını görmək\n"
-        "🔹 `/sesver` - Oyunun ən yaxşı oyunçusuna səs vermək üçün istifadə olunur\n"
-        "🔹 `/komek` - Oyunun ən yaxşı oyunçusuna səs vermək üçün istifadə olunur\n\n"
+        "🔹 `/sesver` - Oyundan sonra oyunun ən yaxşı oyunçusuna səs vermək üçün istifadə olunur\n"
+        "🔹 `/komek` - Komek lazim olarsa \n\n"
+        "🔹 `/bitmishoyunlar` - Butun bitmish oyunlar burada var!\n\n"
         "🤖 Şifrəli əmrlər:\n\n"
         "🔹 `/oyunyarat` - Yeni oyun yaradır \n"
         "🔹 `/oyunubitir` - Oyunu bitirir və nəticələri qeyd edir \n"
