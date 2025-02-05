@@ -31,7 +31,7 @@ active_games = {}
 vote_data = {}
 
 async def start(update: Update, context: CallbackContext):
-    """Requests a password to start the bot only if not already running."""
+    """Bot artıq işləyirsə, şifrə tələb etməsin."""
     if context.bot_data.get("started", False):
         await update.message.reply_text("⚡ Bot artıq aktivdir!")
         return ConversationHandler.END
@@ -40,7 +40,7 @@ async def start(update: Update, context: CallbackContext):
     return "START_CONFIRM"
 
 async def start_confirm(update: Update, context: CallbackContext):
-    """Checks the password and starts the bot if correct."""
+    """Şifrəni yoxlayır və botu başladır."""
     if update.message.text != START_PASSWORD:
         await update.message.reply_text("❌ Kod yalnışdır! Bot başlamadı.")
         return ConversationHandler.END
@@ -54,8 +54,6 @@ async def start_confirm(update: Update, context: CallbackContext):
     )
 
     return ConversationHandler.END
-
-
 
 async def error_handler(update: Update, context: CallbackContext):
     logger.error(f"Update {update} caused error {context.error}")
