@@ -432,6 +432,7 @@ def main():
 
     application.add_handler(game_handler)
     application.add_handler(CommandHandler("oyunubitir", oyunubitir))
+    application.add_handler(CommandHandler("start", start))
     delete_game_handler = ConversationHandler(
     entry_points=[CommandHandler("oyunusil", oyunusil)],
     states={
@@ -447,16 +448,6 @@ def main():
     application.add_handler(CommandHandler("oyunagelirem", oyunagelirem, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CommandHandler("mengelmirem", mengelmirem, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CallbackQueryHandler(vote_handler, pattern=r"vote_.*"))
-    
-    start_handler = ConversationHandler(
-    entry_points=[CommandHandler("start", start)],
-    states={
-        "START_CONFIRM": [MessageHandler(filters.TEXT & ~filters.COMMAND, start_confirm)]
-    },
-    fallbacks=[]
-)
-
-    application.add_handler(start_handler)
 
     application.add_handler(CallbackQueryHandler(join_game, pattern=r"join_game_\d+"))
     application.add_handler(CallbackQueryHandler(leave_game, pattern=r"leave_game_\d+"))
