@@ -22,10 +22,9 @@ PASSWORD, LOCATION, TIME, EXTRA_INFO = range(4)
 
 # COMMANDLAR UCUN SIFRELER
 START_PASSWORD = "1234"
-STOP_PASSWORD = "1234"
 
 # oyunyarat ve oyunubitir parolu
-GAME_CREATION_PASSWORD = "12345"
+GAME_CREATION_PASSWORD = "1234"
 
 # Dictionary to store ongoing game details
 active_games = {}
@@ -100,14 +99,6 @@ async def set_extra_info(update: Update, context: CallbackContext):
         "participants": set()
     }
 
-    keyboard = [
-    [InlineKeyboardButton("❌ Oyunu Sil", callback_data=f"delete_game_{chat_id}")],
-    [InlineKeyboardButton("🏁 Oyunu Bitir", callback_data=f"finish_game_{chat_id}")],
-]
-
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
     game_info = (
         f"✅ Oyun yaradıldı!\n\n"
         f"📍 Məkan: {context.user_data['location']}\n"
@@ -115,7 +106,7 @@ async def set_extra_info(update: Update, context: CallbackContext):
         f"📄 Əlavə məlumat: {context.user_data['extra_info']}\n"
     )
 
-    await update.message.reply_text(game_info, reply_markup=reply_markup)
+    await update.message.reply_text(game_info)
     return ConversationHandler.END
 
 async def delete_game(update: Update, context: CallbackContext):
@@ -152,30 +143,12 @@ async def komek(update: Update, context: CallbackContext):
     """Provides help information when /komek is used."""
     help_text = (
         "📌 Kömək Məlumatı:\n\n"
-        "✅ Əgər oyunla bağlı sualınız varsa, Ravanin nömrəsinə WhatsApp-da yaza və ya zəng edə bilərsiniz.\n\n"
-        "---\n\n"
+        "✅ Əgər oyunla bağlı sualınız varsa, Ravanin nömrəsinə WhatsApp-da yaza və ya zəng edə bilərsiniz.\n"
+        "---\n"
         "⚠️ Yox əgər bu botda problem görmüsüzsə, söymüyün 😄 WhatsApp-da yazın, problemi həll edim! +99455555555343 😉"
     )
 
     await update.message.reply_text(help_text)
-
-
-async def stop(update: Update, context: CallbackContext):
-    """Requests a password to stop the bot."""
-    await update.message.reply_text("🔑 Botu dayandırmaq üçün kodu daxil edin:")
-    return "STOP_CONFIRM"
-
-async def stop_confirm(update: Update, context: CallbackContext):
-    """Checks the password and stops the bot if correct."""
-    if update.message.text != STOP_PASSWORD:
-        await update.message.reply_text("❌ Kod yalnışdır! Bot dayandırılmadı.")
-        return ConversationHandler.END
-
-    await update.message.reply_text("✅ Bot uğurla dayandırıldı. Görüşənədək! 👋")
-    os._exit(0)  # Botu dayandırır
-
-    return ConversationHandler.END
-
 
 async def oyunubitir(update: Update, context: CallbackContext):
     """Starts the game finishing process by requesting a password first."""
@@ -295,11 +268,12 @@ async def funksiyalar(update: Update, context: CallbackContext):
     commands_list = (
         "🤖 Futbol botun mövcud əmrləri:\n\n"
         "🔹 `/start` - Botu başladır (Şifrə ilə işləyir)\n"
-        "🔹 `/stop` - Botu dayandırır (Şifrə ilə işləyir) \n"
-        "🔹 `/funksiyalar` - Botun bütün funksiyalarını göstərir\n\n"
         "🔹 `/oyunyarat` - Yeni oyun yaradır (yalnız adminlər üçün)\n"
-        "🔹 `/oyun` - Hazırda aktiv oyunun məlumatlarını göstərir\n"
         "🔹 `/oyunubitir` - Oyunu bitir və nəticələri qeyd edir\n"
+        "🔹 `/funksiyalar` - Botun bütün funksiyalarını göstərir\n\n"
+
+        "🔹 `/oyun` - Hazırda aktiv oyunun məlumatlarını göstərir\n"
+
         "🔹 `/list` - Oyunda iştirak edənlərin siyahısını göstərir\n"
         "🔹 `/oyunagelirem` - Oyuna qoşulmaq üçün istifadə olunur\n"
         "🔹 `/mengelmirem` - Oyundan çıxmaq üçün istifadə olunur\n"
@@ -454,27 +428,7 @@ def main():
     application.add_handler(CommandHandler("oyunagelirem", oyunagelirem, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CommandHandler("mengelmirem", mengelmirem, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CallbackQueryHandler(vote_handler, pattern=r"vote_.*"))
-
-    finish_game_handler = ConversationHandler(
-    entry_points=[CallbackQueryHandler(oyunubitir, pattern="^finish_game$")],
-    states={
-        "FINISH_PASSWORD": [MessageHandler(filters.TEXT & ~filters.COMMAND, check_finish_password)],
-        "SCORE": [MessageHandler(filters.TEXT & ~filters.COMMAND, set_score)],
-        "WINNER": [MessageHandler(filters.TEXT & ~filters.COMMAND, set_winner)]
-    },
-    fallbacks=[]
-)
-
-    application.add_handler(finish_game_handler)
-    stop_handler = ConversationHandler(
-    entry_points=[CommandHandler("stop", stop)],
-    states={
-        "STOP_CONFIRM": [MessageHandler(filters.TEXT & ~filters.COMMAND, stop_confirm)]
-    },
-    fallbacks=[]
-)
-
-    application.add_handler(stop_handler)
+    
     start_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
     states={
@@ -487,7 +441,6 @@ def main():
 
     application.add_handler(CallbackQueryHandler(join_game, pattern=r"join_game_\d+"))
     application.add_handler(CallbackQueryHandler(leave_game, pattern=r"leave_game_\d+"))
-    application.add_handler(CallbackQueryHandler(delete_game, pattern=r"delete_game_\d+"))
     application.add_error_handler(error_handler)
 
     signal.signal(signal.SIGINT, signal_handler)
