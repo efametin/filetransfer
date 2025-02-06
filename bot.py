@@ -242,9 +242,6 @@ async def set_winner_team(update: Update, context: CallbackContext):
         # **Bitmiş oyun iştirakçılarını yadda saxla**
         finished_games_participants[chat_id] = list(participants)
 
-        # **Səsvermənin başlanma vaxtını yadda saxlayırıq**
-        context.bot_data[f"sesverme_start_{chat_id}"] = context.job_queue.scheduler.time()
-
         # **Bitmiş oyunu yadda saxla**
         finished_games.append({
             "chat_id": chat_id,
@@ -259,35 +256,14 @@ async def set_winner_team(update: Update, context: CallbackContext):
             f"🏁 Oyun başa çatdı!\n\n"
             f"📊 Hesab: {context.user_data['game_score']}\n"
             f"🏆 Qalib Komanda: {context.user_data['winner_team']}\n\n"
-            f"🗳 İndi oyunun ən yaxşı oyunçusuna səs vermək üçün `/sesver` yazın!"
+            f"🗳 Oyun bitib, artıq oyunun ən yaxşısını seçmək üçün `/sesver` əmrini yaza bilərsiniz!"
         )
 
         await update.message.reply_text(final_message)
 
-        # **Səsverməni avtomatik başladırıq**
-        await start_voting(chat_id, context)
-
     return ConversationHandler.END
 
 
-async def start_voting(chat_id: int, context: CallbackContext):
-    """Səsverməni avtomatik başladır və 1 saat sonra bitirir."""
-    participants = finished_games_participants.get(chat_id, [])
-
-    if not participants:
-        await context.bot.send_message(chat_id, "❌ Səsvermə başlaya bilmir, çünki iştirakçı yoxdur.")
-        return
-
-    keyboard = []
-    for participant in participants:
-        button_text = f"{participant} - 0 səs"
-        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"vote_{participant}")])
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await context.bot.send_message(chat_id, "🗳 Oyunun ən yaxşı oyunçusuna səs verin!", reply_markup=reply_markup)
-
-    # **1 saat sonra səsverməni bitirəcək job əlavə edirik**
-    context.job_queue.run_once(announce_winner, 60, chat_id=chat_id, name=f"sesverme_{chat_id}")
 
 
 async def bitmishoyunlar(update: Update, context: CallbackContext):
@@ -296,7 +272,7 @@ async def bitmishoyunlar(update: Update, context: CallbackContext):
         await update.message.reply_text("🔍 Hələ ki, heç bir bitmiş oyun yoxdur.")
         return
 
-    result_text = "🏆 Bitmiş Oyunlar:\n\n"
+    result_text = "🏆 **Bitmiş Oyunlar:**\n\n"
 
     for idx, game in enumerate(finished_games, start=1):
         result_text += (
@@ -306,7 +282,7 @@ async def bitmishoyunlar(update: Update, context: CallbackContext):
             f"📄 Əlavə məlumat: {game['extra_info']}\n"
             f"📊 Hesab: {game['score']}\n"
             f"🏆 Qalib Komanda: {game['winner_team']}\n"
-            f"--- --- ---\n"
+            f"-------------------------\n"
         )
 
     await update.message.reply_text(result_text)
@@ -314,27 +290,29 @@ async def bitmishoyunlar(update: Update, context: CallbackContext):
 
 
 async def sesver(update: Update, context: CallbackContext):
-    """İstifadəçilərin səs verməsinə icazə verir və vaxt yoxlayır."""
+    """Shows the list of participants for voting and allows users to vote."""
     chat_id = update.effective_chat.id
 
-    # **Əgər səsvermə başlamayıbsa**
-    if f"sesverme_start_{chat_id}" not in context.bot_data:
-        await update.message.reply_text("❌ Hazırda aktiv səsvermə yoxdur.")
+    # **Əgər aktiv oyun yoxdursa, bitmiş oyunlara bax**
+    participants = active_games.get(chat_id, {}).get("participants", [])
+   
+    if not participants:
+        participants = finished_games_participants.get(chat_id, [])  # Bitmiş oyun iştirakçılarını götür
+
+    if not participants:
+        await update.message.reply_text("❌ Hazırda səsvermə mümkün deyil, çünki oyunçular siyahısı boşdur.")
         return
 
-    # **Başlanma vaxtını tapırıq**
-    start_time = context.bot_data[f"sesverme_start_{chat_id}"]
-    current_time = context.job_queue.scheduler.time()
-    elapsed_time = current_time - start_time
+    # **Hər iştirakçının aldığı səs sayını əldə et**
+    keyboard = []
+    for participant in participants:
+        vote_count = sum(1 for v in vote_data.values() if v == participant)  # Səs sayını hesabla
+        button_text = f"{participant} - {vote_count} səs"  # İştirakçının yanında səs sayı göstərilsin
+        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"vote_{participant}")])
 
-    # **Əgər 1 saatdan çox keçibsə, səsvermə artıq bitib!**
-    if elapsed_time > 3600:
-        await update.message.reply_text("❌ Səsvermə artıq bitmişdir!")
-        return
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # **Əgər 1 saat keçməyibsə, səsverməyə icazə verilir**
-    await start_voting(chat_id, context)
-
+    await update.message.reply_text("🗳 Oyunun ən yaxşı oyunçusuna səs verin!", reply_markup=reply_markup)
 
 
 
@@ -366,30 +344,30 @@ async def vote_handler(update: Update, context: CallbackContext):
 
 
 async def announce_winner(context: CallbackContext):
-    """Səsverməni bitirir və qalibi elan edir."""
-    job = context.job
-    chat_id = job.chat_id
-
+    """Announces the best player after 1 hour of voting."""
     if not vote_data:
-        await context.bot.send_message(chat_id, "⚠️ Səsvermə bitdi, amma heç kim səs vermədi.")
-        return
+        return  # Heç kim səs verməyibsə, heç nə etmə
 
     vote_count = {}
     for player in vote_data.values():
         vote_count[player] = vote_count.get(player, 0) + 1
 
+    # Ən çox səs alan maksimum neçə səs alıb?
     max_votes = max(vote_count.values(), default=0)
+
+    # Ən çox səs alan oyunçuları seç
     top_players = [player for player, count in vote_count.items() if count == max_votes]
 
+    # Əgər birdən çox oyunçu eyni səsləri alıbsa, təsadüfi seçim et
     best_player = random.choice(top_players)
 
+    # Qrupu ID kimi götürərək mesaj göndər
+    chat_id = list(finished_games_participants.keys())[0]  # Ən son bitən oyunun qrupu
     await context.bot.send_message(chat_id, f"🏆 Oyunun ən yaxşısı **{best_player}** oldu! 🎖")
 
-    # **Səsverməni sıfırlayırıq**
+    # **Səsvermə məlumatlarını sıfırla**
     vote_data.clear()
-    finished_games_participants.pop(chat_id, None)
-    context.bot_data.pop(f"sesverme_start_{chat_id}", None)
-
+    finished_games_participants.pop(chat_id, None)  # Bitmiş oyun iştirakçılarını da sil
 
 
 
