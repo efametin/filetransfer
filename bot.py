@@ -249,16 +249,15 @@ async def set_winner_team(update: Update, context: CallbackContext):
     if participants:
         global active_voting, vote_timer
         active_voting = {"chat_id": chat_id, "participants": list(participants), "votes": {}}
+
         def run_asyncio_task():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(announce_winner(chat_id))
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(announce_winner(chat_id))
 
-vote_timer = Timer(60, run_asyncio_task)  # 1 saat
-vote_timer.start()
+        vote_timer = Timer(3600, run_asyncio_task)  # 1 saat (3600 saniyə)
+        vote_timer.start()
 
-
-    
         # **Bitmiş oyun iştirakçılarını yadda saxla**
         finished_games_participants[chat_id] = list(participants)
 
