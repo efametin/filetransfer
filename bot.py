@@ -5,6 +5,7 @@ import random
 import signal
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, CallbackContext, ConversationHandler, MessageHandler, filters, CallbackQueryHandler
+from threading import Timer
 
 # Configure logging
 logging.basicConfig(
@@ -29,6 +30,10 @@ GAME_CREATION_PASSWORD = "1234"
 
 # Dictionary to store ongoing game details
 active_games = {}
+
+active_voting = None  # Hazırda aktiv səsverməni saxlayır
+vote_timer = None  # Timer obyektini saxlayır
+
 vote_data = {}
 
 # Bitmiş oyun iştirakçılarını saxlayan dictionary
@@ -239,6 +244,13 @@ async def set_winner_team(update: Update, context: CallbackContext):
         game = active_games.pop(chat_id)  
         participants = game["participants"]
 
+    # **Yeni səsvermə başlat**
+    if participants:
+        global active_voting, vote_timer
+        active_voting = {"chat_id": chat_id, "participants": list(participants), "votes": {}}
+        vote_timer = Timer(60, lambda: asyncio.run(announce_winner(chat_id)))  # 1 saat (3600 saniyə)
+        vote_timer.start()
+    
         # **Bitmiş oyun iştirakçılarını yadda saxla**
         finished_games_participants[chat_id] = list(participants)
 
@@ -290,50 +302,47 @@ async def bitmishoyunlar(update: Update, context: CallbackContext):
 
 
 async def sesver(update: Update, context: CallbackContext):
-    """Shows the list of participants for voting and allows users to vote."""
-    chat_id = update.effective_chat.id
+    """Aktiv səsverməni göstərir və istifadəçilərə səs verməyə icazə verir."""
+    global active_voting
 
-    # **Əgər aktiv oyun yoxdursa, bitmiş oyunlara bax**
-    participants = active_games.get(chat_id, {}).get("participants", [])
-   
-    if not participants:
-        participants = finished_games_participants.get(chat_id, [])  # Bitmiş oyun iştirakçılarını götür
-
-    if not participants:
-        await update.message.reply_text("❌ Hazırda səsvermə mümkün deyil, çünki oyunçular siyahısı boşdur.")
+    if not active_voting:
+        await update.message.reply_text("❌ Hazırda aktiv səsvermə yoxdur.")
         return
 
-    # **Hər iştirakçının aldığı səs sayını əldə et**
+    chat_id = active_voting["chat_id"]
+    if update.effective_chat.id != chat_id:
+        await update.message.reply_text("❌ Bu səsvermə başqa bir oyun üçündür.")
+        return
+
     keyboard = []
-    for participant in participants:
-        vote_count = sum(1 for v in vote_data.values() if v == participant)  # Səs sayını hesabla
-        button_text = f"{participant} - {vote_count} səs"  # İştirakçının yanında səs sayı göstərilsin
+    for participant in active_voting["participants"]:
+        vote_count = sum(1 for v in active_voting["votes"].values() if v == participant)
+        button_text = f"{participant} - {vote_count} səs"
         keyboard.append([InlineKeyboardButton(button_text, callback_data=f"vote_{participant}")])
 
     reply_markup = InlineKeyboardMarkup(keyboard)
-
     await update.message.reply_text("🗳 Oyunun ən yaxşı oyunçusuna səs verin!", reply_markup=reply_markup)
 
 
 
+
 async def vote_handler(update: Update, context: CallbackContext):
-    """Handles user votes and updates vote counts in real-time."""
+    """İstifadəçinin səsini qeydə alır və yenilənmiş nəticələri göstərir."""
+    global active_voting
+
     query = update.callback_query
     voter = query.from_user.id
     selected_player = query.data.split("_")[-1]
-    chat_id = query.message.chat_id
 
-    if voter in vote_data:
+    if not active_voting or voter in active_voting["votes"]:
         await query.answer("❌ Siz artıq səs vermisiniz!", show_alert=True)
         return
 
-    vote_data[voter] = selected_player  # İstifadəçinin səsini yadda saxla
+    active_voting["votes"][voter] = selected_player
 
-    # **Yeni inline keyboard yaradılır ki, səs sayları yenilənsin**
-    participants = finished_games_participants.get(chat_id, [])
     keyboard = []
-    for participant in participants:
-        vote_count = sum(1 for v in vote_data.values() if v == participant)  # Səs sayını hesabla
+    for participant in active_voting["participants"]:
+        vote_count = sum(1 for v in active_voting["votes"].values() if v == participant)
         button_text = f"{participant} - {vote_count} səs"
         keyboard.append([InlineKeyboardButton(button_text, callback_data=f"vote_{participant}")])
 
@@ -343,31 +352,29 @@ async def vote_handler(update: Update, context: CallbackContext):
     await query.answer("✅ Səsiniz qeydə alındı!")
 
 
-async def announce_winner(context: CallbackContext):
-    """Announces the best player after 1 hour of voting."""
-    if not vote_data:
-        return  # Heç kim səs verməyibsə, heç nə etmə
+
+async def announce_winner(chat_id):
+    """Səsvermə bitəndə qalibi elan edir və məlumatları sıfırlayır."""
+    global active_voting, vote_timer
+
+    if not active_voting or active_voting["chat_id"] != chat_id:
+        return
 
     vote_count = {}
-    for player in vote_data.values():
+    for player in active_voting["votes"].values():
         vote_count[player] = vote_count.get(player, 0) + 1
 
-    # Ən çox səs alan maksimum neçə səs alıb?
     max_votes = max(vote_count.values(), default=0)
-
-    # Ən çox səs alan oyunçuları seç
     top_players = [player for player, count in vote_count.items() if count == max_votes]
 
-    # Əgər birdən çox oyunçu eyni səsləri alıbsa, təsadüfi seçim et
-    best_player = random.choice(top_players)
+    winner = random.choice(top_players) if top_players else "Heç kim"
 
-    # Qrupu ID kimi götürərək mesaj göndər
-    chat_id = list(finished_games_participants.keys())[0]  # Ən son bitən oyunun qrupu
-    await context.bot.send_message(chat_id, f"🏆 Oyunun ən yaxşısı **{best_player}** oldu! 🎖")
+    await context.bot.send_message(chat_id, f"🏆 Oyunun ən yaxşı oyunçusu **{winner}** oldu! 🎖")
 
-    # **Səsvermə məlumatlarını sıfırla**
-    vote_data.clear()
-    finished_games_participants.pop(chat_id, None)  # Bitmiş oyun iştirakçılarını da sil
+    # **Səsverməni sıfırlayırıq**
+    active_voting = None
+    vote_timer = None
+
 
 
 
