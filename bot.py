@@ -61,30 +61,35 @@ async def error_handler(update: Update, context: CallbackContext):
         )
 
 async def oyun_yarat(update: Update, context: CallbackContext):
-    await update.message.reply_text("🔑 Oyunu yaratmaq üçün şifrə daxil edin:", reply_to_message_id=update.message.message_id, allow_sending_without_reply=True)
+    """Starts the game creation process by requesting a password."""
+    await update.message.reply_text("🔑 Oyunu yaratmaq üçün şifrə daxil edin:", reply_to_message_id=update.message.message_id)
     return PASSWORD
+
 
 async def check_password(update: Update, context: CallbackContext):
     """Verifies the entered password."""
     if update.message.text != GAME_CREATION_PASSWORD:
-        await update.message.reply_text("❌ Şifrə yalnışdır! Yenidən cəhd edin.", reply_to_message_id=update.message.message_id, allow_sending_without_reply=True)
+        await update.message.reply_text("❌ Şifrə yalnışdır! Yenidən cəhd edin.", reply_to_message_id=update.message.message_id)
         return ConversationHandler.END
 
-    await update.message.reply_text("📍 Oyun keçiriləcək məkanı daxil edin:", reply_to_message_id=update.message.message_id, allow_sending_without_reply=True)
+    await update.message.reply_text("📍 Oyun keçiriləcək məkanı daxil edin:", reply_to_message_id=update.message.message_id)
     return LOCATION
+
 
 
 async def set_location(update: Update, context: CallbackContext):
     """Sets the game location."""
     context.user_data["location"] = update.message.text
-    await update.message.reply_text("⏰ Oyun vaxtını daxil edin:", reply_to_message_id=update.message.message_id, allow_sending_without_reply=True)
+    await update.message.reply_text("⏰ Oyun vaxtını daxil edin:", reply_to_message_id=update.message.message_id)
     return TIME
+
 
 async def set_time(update: Update, context: CallbackContext):
     """Sets the game time."""
     context.user_data["time"] = update.message.text
-    await update.message.reply_text("📄 Əlavə məlumatları daxil edin:", reply_to_message_id=update.message.message_id, allow_sending_without_reply=True)
+    await update.message.reply_text("📄 Əlavə məlumatları daxil edin:", reply_to_message_id=update.message.message_id)
     return EXTRA_INFO
+
 
 
 async def set_extra_info(update: Update, context: CallbackContext):
@@ -112,6 +117,7 @@ async def set_extra_info(update: Update, context: CallbackContext):
     await context.bot.send_message(chat_id, game_info)
 
     return ConversationHandler.END
+
 
 
 async def delete_game(update: Update, context: CallbackContext):
