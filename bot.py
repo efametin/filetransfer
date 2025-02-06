@@ -18,8 +18,6 @@ logger = logging.getLogger(__name__)
 
 # BOTUN TOKENI
 TOKEN = '7675127420:AAFbt7343zQWIBJ9eiwNxpo46yf6DHGf1Kg'
-GROUP_CHAT_ID = 1002369357283  # Buraya qrupunuzun ID-sini yazın
-
 
 
 # State constants for ConversationHandler
@@ -53,12 +51,6 @@ async def start(update: Update, context: CallbackContext):
         "📌 Bütün funksiyaları bilmək üçün `/funksiyalar` əmrini istifadə edin!"
     )
 
-async def get_chat_id(update: Update, context: CallbackContext):
-    """Qrupun ID-sini göstərir."""
-    chat_id = update.effective_chat.id
-    await update.message.reply_text(f"Bu qrupun ID-si: `{chat_id}`", parse_mode="Markdown")
-
-
 
 async def error_handler(update: Update, context: CallbackContext):
     logger.error(f"Update {update} caused error {context.error}")
@@ -68,20 +60,9 @@ async def error_handler(update: Update, context: CallbackContext):
         )
 
 async def oyun_yarat(update: Update, context: CallbackContext):
-    """Oyun yaratma prosesini yalnız şəxsi mesajda icra etmək üçün yoxlayır."""
-
-    if update.message.chat.type != "private":
-        await update.message.reply_text(
-            "🔒 Zəhmət olmasa botun şəxsi mesajına yazaraq oyunu yaradın."
-        )
-        return ConversationHandler.END
-
+    """Starts the game creation process by requesting a password."""
     await update.message.reply_text("🔑 Oyunu yaratmaq üçün şifrə daxil edin:")
     return PASSWORD
-
-
-
-
 
 async def check_password(update: Update, context: CallbackContext):
     """Verifies the entered password."""
@@ -91,10 +72,6 @@ async def check_password(update: Update, context: CallbackContext):
    
     await update.message.reply_text("📍 Oyun keçiriləcək məkanı daxil edin:")
     return LOCATION
-
-
-
-
 
 async def set_location(update: Update, context: CallbackContext):
     """Sets the game location."""
@@ -107,10 +84,6 @@ async def set_time(update: Update, context: CallbackContext):
     context.user_data["time"] = update.message.text
     await update.message.reply_text("📄 Əlavə məlumatları daxil edin:")
     return EXTRA_INFO
-
-
-
-
 
 async def set_extra_info(update: Update, context: CallbackContext):
     """Sets additional game details and confirms creation."""
@@ -133,22 +106,8 @@ async def set_extra_info(update: Update, context: CallbackContext):
         f"📄 Əlavə məlumat: {context.user_data['extra_info']}\n"
     )
 
-    # ✅ Oyunu yaradan istifadəçiyə mesaj göndər
-    await update.message.reply_text("✅ Oyun uğurla yaradıldı! Məlumatlar qrupa göndərilir.")
-
-    # ✅ Oyunu müəyyən edilmiş qrupa göndər
-    try:
-        await context.bot.send_message(GROUP_CHAT_ID, game_info)
-    except Exception as e:
-        logger.error(f"Qrupa mesaj göndərmək alınmadı ({GROUP_CHAT_ID}): {e}")
-
+    await update.message.reply_text(game_info)
     return ConversationHandler.END
-
-
-
-
-
-
 
 async def delete_game(update: Update, context: CallbackContext):
     """Deletes the created game if the user is the creator."""
@@ -220,17 +179,15 @@ async def list_participants(update: Update, context: CallbackContext):
 
 
 async def oyunusil(update: Update, context: CallbackContext):
-    """Oyunu yalnız şəxsi mesajda silməyə icazə verir."""
+    """Aktiv oyunu silmək üçün şifrə tələb edir."""
+    chat_id = update.effective_chat.id  # Qrupun ID-sini al
 
-    if update.message.chat.type != "private":
-        await update.message.reply_text(
-            "🔒 Zəhmət olmasa botun şəxsi mesajına yazaraq oyunu silin."
-        )
-        return ConversationHandler.END
+    if chat_id not in active_games:  # Əgər aktiv oyun yoxdursa
+        await update.message.reply_text("❌ Hal-hazırda silinə biləcək aktiv oyun yoxdur.")
+        return
 
     await update.message.reply_text("🔑 Oyunu silmək üçün şifrəni daxil edin:")
     return "DELETE_PASSWORD"
-
 
 async def check_delete_password(update: Update, context: CallbackContext):
     """Şifrəni yoxlayır və oyunu silir."""
@@ -250,17 +207,15 @@ async def check_delete_password(update: Update, context: CallbackContext):
 
 
 async def oyunubitir(update: Update, context: CallbackContext):
-    """Oyunu yalnız şəxsi mesajda bitirməyə icazə verir."""
+    """Aktiv oyunu bitirmək üçün şifrə tələb edir və qalib komandanı müəyyənləşdirir."""
+    chat_id = update.effective_chat.id  # Qrupun ID-sini al
 
-    if update.message.chat.type != "private":
-        await update.message.reply_text(
-            "🔒 Zəhmət olmasa botun şəxsi mesajına yazaraq oyunu bitirin."
-        )
-        return ConversationHandler.END
+    if chat_id not in active_games:  # Əgər aktiv oyun yoxdursa
+        await update.message.reply_text("❌ Hazırda bitiriləcək aktiv oyun yoxdur.")
+        return
 
     await update.message.reply_text("🔑 Oyunu bitirmək üçün şifrəni daxil edin:")
     return "FINISH_PASSWORD"
-
 
 async def check_finish_password(update: Update, context: CallbackContext):
     """Şifrəni yoxlayır və oyunu bitirmək prosesinə davam edir."""
@@ -328,15 +283,6 @@ async def set_winner_team(update: Update, context: CallbackContext):
     return ConversationHandler.END
 
 
-async def save_group(update: Update, context: CallbackContext):
-    """Botun olduğu qrupları yadda saxlayır."""
-    chat = update.message.chat
-
-    if chat.type in ["group", "supergroup"]:
-        if "groups" not in context.bot_data:
-            context.bot_data["groups"] = set()
-
-        context.bot_data["groups"].add(chat.id)
 
 
 async def bitmishoyunlar(update: Update, context: CallbackContext):
@@ -562,11 +508,6 @@ def main():
     )
 
     application.add_handler(game_handler)
-
-
-
-
-    
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("bitmishoyunlar", bitmishoyunlar))
     delete_game_handler = ConversationHandler(
@@ -581,7 +522,6 @@ def main():
     application.add_handler(CommandHandler("list", list_participants, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CommandHandler("funksiyalar", funksiyalar, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CommandHandler("komek", komek, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
-    application.add_handler(CommandHandler("getchatid", get_chat_id, filters=filters.ChatType.GROUPS))
     application.add_handler(CommandHandler("sesver", sesver, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CommandHandler("oyunagelirem", oyunagelirem, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CommandHandler("mengelmirem", mengelmirem, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
@@ -599,7 +539,6 @@ def main():
 
     # Yeni handleri əsas tətbiqə əlavə et
     application.add_handler(finish_game_handler)
-    application.add_handler(MessageHandler(filters.ChatType.GROUPS, save_group))
    
     application.add_handler(CallbackQueryHandler(join_game, pattern=r"join_game_\d+"))
     application.add_handler(CallbackQueryHandler(leave_game, pattern=r"leave_game_\d+"))
