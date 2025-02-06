@@ -253,7 +253,7 @@ async def set_winner_team(update: Update, context: CallbackContext):
         def run_asyncio_task():
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                loop.run_until_complete(announce_winner(chat_id))
+                loop.run_until_complete(announce_winner(chat_id, context.application))
 
         vote_timer = Timer(60, run_asyncio_task)  # 1 saat (3600 saniyə)
         vote_timer.start()
@@ -360,7 +360,7 @@ async def vote_handler(update: Update, context: CallbackContext):
 
 
 
-async def announce_winner(chat_id):
+async def announce_winner(chat_id, application):
     """Səsvermə bitəndə qalibi elan edir və məlumatları sıfırlayır."""
     global active_voting, vote_timer
 
@@ -376,11 +376,13 @@ async def announce_winner(chat_id):
 
     winner = random.choice(top_players) if top_players else "Heç kim"
 
-    await context.bot.send_message(chat_id, f"🏆 Oyunun ən yaxşı oyunçusu **{winner}** oldu! 🎖")
+    # **Burada context yerinə application istifadə edirik!**
+    await application.bot.send_message(chat_id, f"🏆 Oyunun ən yaxşı oyunçusu **{winner}** oldu! 🎖")
 
     # **Səsverməni sıfırlayırıq**
     active_voting = None
     vote_timer = None
+
 
 
 
