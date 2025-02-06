@@ -62,38 +62,62 @@ async def error_handler(update: Update, context: CallbackContext):
 
 async def oyun_yarat(update: Update, context: CallbackContext):
     """Starts the game creation process by requesting a password."""
-    await context.bot.send_message(chat_id=update.effective_user.id, text="🔑 Oyunu yaratmaq üçün şifrə daxil edin:")
+    
+    # İlk mesajdan sonra istifadəçiyə görünən mesajları silək
+    await update.message.delete()
+
+    await update.message.reply_text("🔑 Oyunu yaratmaq üçün şifrə daxil edin:", reply_markup=ReplyKeyboardRemove())
     return PASSWORD
+
 
 
 async def check_password(update: Update, context: CallbackContext):
     """Verifies the entered password."""
-    if update.message.text != GAME_CREATION_PASSWORD:
-        await update.message.reply_text("❌ Şifrə yalnışdır! Yenidən cəhd edin.", reply_to_message_id=update.message.message_id)
-        return ConversationHandler.END
 
-    await context.bot.send_message(chat_id=update.effective_user.id, text="📍 Oyun keçiriləcək məkanı daxil edin:")
+    # İstifadəçinin yazdığı mesajı sil
+    await update.message.delete()
+
+    if update.message.text != GAME_CREATION_PASSWORD:
+        await update.message.reply_text("❌ Şifrə yalnışdır! Yenidən cəhd edin.", reply_markup=ReplyKeyboardRemove())
+        return ConversationHandler.END
+    
+    await update.message.reply_text("📍 Oyun keçiriləcək məkanı daxil edin:", reply_markup=ReplyKeyboardRemove())
     return LOCATION
+
 
 
 
 async def set_location(update: Update, context: CallbackContext):
     """Sets the game location."""
+    
+    # İstifadəçinin yazdığı mesajı sil
+    await update.message.delete()
+
     context.user_data["location"] = update.message.text
-    await context.bot.send_message(chat_id=update.effective_user.id, text="⏰ Oyun vaxtını daxil edin:")
+    await update.message.reply_text("⏰ Oyun vaxtını daxil edin:", reply_markup=ReplyKeyboardRemove())
     return TIME
+
 
 
 async def set_time(update: Update, context: CallbackContext):
     """Sets the game time."""
+    
+    # İstifadəçinin yazdığı mesajı sil
+    await update.message.delete()
+
     context.user_data["time"] = update.message.text
-    await context.bot.send_message(chat_id=update.effective_user.id, text="📄 Əlavə məlumatları daxil edin:")
+    await update.message.reply_text("📄 Əlavə məlumatları daxil edin:", reply_markup=ReplyKeyboardRemove())
     return EXTRA_INFO
+
 
 
 
 async def set_extra_info(update: Update, context: CallbackContext):
     """Sets additional game details and confirms creation."""
+
+    # İstifadəçinin yazdığı mesajı sil
+    await update.message.delete()
+
     context.user_data["extra_info"] = update.message.text
     chat_id = update.effective_chat.id
 
@@ -113,10 +137,11 @@ async def set_extra_info(update: Update, context: CallbackContext):
         f"📄 Əlavə məlumat: {context.user_data['extra_info']}\n"
     )
 
-    # **Bu hissə yalnız qrupa göndərilsin**
-    await context.bot.send_message(chat_id, game_info)
+    # Oyun yaradıldıqdan sonra təkcə bu mesaj qrupda görünsün
+    await context.bot.send_message(chat_id=chat_id, text=game_info)
 
     return ConversationHandler.END
+
 
 
 
