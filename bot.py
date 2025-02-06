@@ -2,6 +2,7 @@ import logging
 import sys
 import os
 import random
+import asyncio
 import signal
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, CallbackContext, ConversationHandler, MessageHandler, filters, CallbackQueryHandler
@@ -248,8 +249,9 @@ async def set_winner_team(update: Update, context: CallbackContext):
     if participants:
         global active_voting, vote_timer
         active_voting = {"chat_id": chat_id, "participants": list(participants), "votes": {}}
-        vote_timer = Timer(60, lambda: asyncio.run(announce_winner(chat_id)))  # 1 saat (3600 saniyə)
+        vote_timer = Timer(60, lambda: asyncio.get_event_loop().create_task(announce_winner(chat_id)))  # 1 saat
         vote_timer.start()
+
     
         # **Bitmiş oyun iştirakçılarını yadda saxla**
         finished_games_participants[chat_id] = list(participants)
