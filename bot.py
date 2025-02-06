@@ -45,11 +45,13 @@ finished_games = []
 
 async def start(update: Update, context: CallbackContext):
     """Həmişə sabit mesaj qaytaran sadə `/start` funksiyası."""
-    await update.message.reply_text(
+    await update.message.delete()  # Komandanın qrupda görünməməsi üçün
+    await update.message.from_user.send_message(
         "Futbol Bot başladıldı!\n\n"
         "✅ Artıq botun funksiyalarından istifadə edə bilərsiniz.\n"
         "📌 Bütün funksiyaları bilmək üçün `/funksiyalar` əmrini istifadə edin!"
     )
+
 
 
 async def error_handler(update: Update, context: CallbackContext):
