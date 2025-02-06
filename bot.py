@@ -61,41 +61,53 @@ async def error_handler(update: Update, context: CallbackContext):
         )
 
 async def oyun_yarat(update: Update, context: CallbackContext):
-    """Starts the game creation process by requesting a password."""
-    
-    # İlk mesajdan sonra istifadəçiyə görünən mesajları silək
-    await update.message.delete()
+    """Starts the game creation process with password inline buttons."""
 
-    await update.message.reply_text("🔑 Oyunu yaratmaq üçün şifrə daxil edin:", reply_markup=ReplyKeyboardRemove())
+    keyboard = [
+        [InlineKeyboardButton("✅ Şifrəni daxil et", callback_data="enter_password")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text(
+        "🔑 Oyunu yaratmaq üçün şifrə daxil edin.",
+        reply_markup=reply_markup
+    )
+
     return PASSWORD
 
 
 
+
 async def check_password(update: Update, context: CallbackContext):
-    """Verifies the entered password."""
+    """Verifies the entered password and proceeds to next step."""
 
-    # İstifadəçinin yazdığı mesajı sil
-    await update.message.delete()
+    query = update.callback_query
+    user_id = query.from_user.id  # İstifadəçinin ID-sini al
 
-    if update.message.text != GAME_CREATION_PASSWORD:
-        await update.message.reply_text("❌ Şifrə yalnışdır! Yenidən cəhd edin.", reply_markup=ReplyKeyboardRemove())
-        return ConversationHandler.END
-    
-    await update.message.reply_text("📍 Oyun keçiriləcək məkanı daxil edin:", reply_markup=ReplyKeyboardRemove())
-    return LOCATION
+    await context.bot.send_message(
+        chat_id=user_id,
+        text="🔒 Zəhmət olmasa şifrəni yazın:"
+    )
+
+    return PASSWORD
+
 
 
 
 
 async def set_location(update: Update, context: CallbackContext):
-    """Sets the game location."""
-    
-    # İstifadəçinin yazdığı mesajı sil
-    await update.message.delete()
+    """Sets the game location using inline buttons."""
 
-    context.user_data["location"] = update.message.text
-    await update.message.reply_text("⏰ Oyun vaxtını daxil edin:", reply_markup=ReplyKeyboardRemove())
-    return TIME
+    keyboard = [
+        [InlineKeyboardButton("📍 Bakı", callback_data="location_baku")],
+        [InlineKeyboardButton("📍 Sumqayıt", callback_data="location_sumqayit")],
+        [InlineKeyboardButton("📍 Gəncə", callback_data="location_gence")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text("📍 Oyun keçiriləcək məkanı seçin:", reply_markup=reply_markup)
+    return LOCATION
+
 
 
 
@@ -113,20 +125,19 @@ async def set_time(update: Update, context: CallbackContext):
 
 
 async def set_extra_info(update: Update, context: CallbackContext):
-    """Sets additional game details and confirms creation."""
+    """Final step - confirms the game creation and sends the message to the group."""
 
-    # İstifadəçinin yazdığı mesajı sil
-    await update.message.delete()
-
-    context.user_data["extra_info"] = update.message.text
+    user_id = update.message.from_user.id
     chat_id = update.effective_chat.id
 
-    # Store the game details
+    context.user_data["extra_info"] = update.message.text
+
+    # Oyun məlumatlarını yadda saxla
     active_games[chat_id] = {
         "location": context.user_data["location"],
         "time": context.user_data["time"],
         "extra_info": context.user_data["extra_info"],
-        "creator": chat_id,
+        "creator": user_id,
         "participants": set()
     }
 
@@ -137,10 +148,9 @@ async def set_extra_info(update: Update, context: CallbackContext):
         f"📄 Əlavə məlumat: {context.user_data['extra_info']}\n"
     )
 
-    # Oyun yaradıldıqdan sonra təkcə bu mesaj qrupda görünsün
     await context.bot.send_message(chat_id=chat_id, text=game_info)
-
     return ConversationHandler.END
+
 
 
 
