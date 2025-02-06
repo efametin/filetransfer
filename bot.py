@@ -53,6 +53,11 @@ async def start(update: Update, context: CallbackContext):
         "📌 Bütün funksiyaları bilmək üçün `/funksiyalar` əmrini istifadə edin!"
     )
 
+async def get_chat_id(update: Update, context: CallbackContext):
+    """Qrupun ID-sini göstərir."""
+    chat_id = update.effective_chat.id
+    await update.message.reply_text(f"Bu qrupun ID-si: `{chat_id}`", parse_mode="Markdown")
+
 
 
 async def error_handler(update: Update, context: CallbackContext):
@@ -558,12 +563,8 @@ def main():
 
     application.add_handler(game_handler)
 
-    async def get_chat_id(update: Update, context: CallbackContext):
-    """Qrupun ID-sini göstərir."""
-    chat_id = update.effective_chat.id
-    await update.message.reply_text(f"Bu qrupun ID-si: `{chat_id}`", parse_mode="Markdown")
 
-    application.add_handler(CommandHandler("getchatid", get_chat_id, filters=filters.ChatType.GROUPS))
+
 
     
     application.add_handler(CommandHandler("start", start))
@@ -580,6 +581,7 @@ def main():
     application.add_handler(CommandHandler("list", list_participants, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CommandHandler("funksiyalar", funksiyalar, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CommandHandler("komek", komek, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
+    application.add_handler(CommandHandler("getchatid", get_chat_id, filters=filters.ChatType.GROUPS))
     application.add_handler(CommandHandler("sesver", sesver, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CommandHandler("oyunagelirem", oyunagelirem, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
     application.add_handler(CommandHandler("mengelmirem", mengelmirem, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
