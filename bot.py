@@ -249,8 +249,14 @@ async def set_winner_team(update: Update, context: CallbackContext):
     if participants:
         global active_voting, vote_timer
         active_voting = {"chat_id": chat_id, "participants": list(participants), "votes": {}}
-        vote_timer = Timer(60, lambda: asyncio.get_event_loop().create_task(announce_winner(chat_id)))  # 1 saat
-        vote_timer.start()
+        def run_asyncio_task():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(announce_winner(chat_id))
+
+vote_timer = Timer(60, run_asyncio_task)  # 1 saat
+vote_timer.start()
+
 
     
         # **Bitmiş oyun iştirakçılarını yadda saxla**
@@ -385,7 +391,7 @@ async def funksiyalar(update: Update, context: CallbackContext):
     """Shows all available commands in the bot."""
     commands_list = (
         "🤖 Futbol botun mövcud əmrləri:\n\n"
-        "🚀 `/start` - Botu başladır\n"
+        "🚀 `/start` - zzzzzBotu başladır\n"
         "🛠 `/funksiyalar` - Bütün əmrləri göstərir\n"
         "⚽ `/oyun` - Aktiv oyunun məlumatlarını göstərir\n"
         "👟 `/oyunagelirem` - Oyuna qoşulmaq üçün istifadə olunur\n"
