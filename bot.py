@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 # BOTUN TOKENI
 TOKEN = '7675127420:AAFbt7343zQWIBJ9eiwNxpo46yf6DHGf1Kg'
+GROUP_CHAT_ID = -4683877978  # Buraya qrupunuzun ID-sini yazın
+
 
 
 # State constants for ConversationHandler
@@ -104,18 +106,18 @@ async def set_time(update: Update, context: CallbackContext):
 
 
 
+
 async def set_extra_info(update: Update, context: CallbackContext):
-    """Oyun məlumatlarını tamamlayır və bütün qruplara elan edir."""
-
-    user_id = update.message.from_user.id
+    """Sets additional game details and confirms creation."""
     context.user_data["extra_info"] = update.message.text
+    chat_id = update.effective_chat.id
 
-    # Oyun məlumatlarını yadda saxla
-    active_games[user_id] = {
+    # Store the game details
+    active_games[chat_id] = {
         "location": context.user_data["location"],
         "time": context.user_data["time"],
         "extra_info": context.user_data["extra_info"],
-        "creator": user_id,
+        "creator": chat_id,
         "participants": set()
     }
 
@@ -126,14 +128,17 @@ async def set_extra_info(update: Update, context: CallbackContext):
         f"📄 Əlavə məlumat: {context.user_data['extra_info']}\n"
     )
 
-    # **İstifadəçiyə təsdiq göndər**
-    await update.message.reply_text("✅ Oyun uğurla yaradıldı və bütün qruplara elan edildi!")
+    # ✅ Oyunu yaradan istifadəçiyə mesaj göndər
+    await update.message.reply_text("✅ Oyun uğurla yaradıldı! Məlumatlar qrupa göndərilir.")
 
-    # **Botun olduğu qruplara oyun elanını göndər**
-    for chat_id in context.bot_data.get("groups", []):
-        await context.bot.send_message(chat_id, game_info)
+    # ✅ Oyunu müəyyən edilmiş qrupa göndər
+    try:
+        await context.bot.send_message(GROUP_CHAT_ID, game_info)
+    except Exception as e:
+        logger.error(f"Qrupa mesaj göndərmək alınmadı ({GROUP_CHAT_ID}): {e}")
 
     return ConversationHandler.END
+
 
 
 
@@ -552,6 +557,15 @@ def main():
     )
 
     application.add_handler(game_handler)
+
+    async def get_chat_id(update: Update, context: CallbackContext):
+    """Qrupun ID-sini göstərir."""
+    chat_id = update.effective_chat.id
+    await update.message.reply_text(f"Bu qrupun ID-si: `{chat_id}`", parse_mode="Markdown")
+
+    application.add_handler(CommandHandler("getchatid", get_chat_id, filters=filters.ChatType.GROUPS))
+
+    
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("bitmishoyunlar", bitmishoyunlar))
     delete_game_handler = ConversationHandler(
