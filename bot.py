@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # BOTUN TOKENI
 TOKEN = '7675127420:AAFbt7343zQWIBJ9eiwNxpo46yf6DHGf1Kg'
-GROUP_CHAT_ID = -4683877978  # Buraya qrupunuzun ID-sini yazın
+GROUP_CHAT_ID = 1002369357283  # Buraya qrupunuzun ID-sini yazın
 
 
 
