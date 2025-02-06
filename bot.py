@@ -61,79 +61,57 @@ async def error_handler(update: Update, context: CallbackContext):
         )
 
 async def oyun_yarat(update: Update, context: CallbackContext):
-    """Starts the game creation process with password inline buttons."""
+    """Oyun yaratma prosesini yalnız şəxsi mesajda icra etmək üçün yoxlayır."""
 
-    keyboard = [
-        [InlineKeyboardButton("✅ Şifrəni daxil et", callback_data="enter_password")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    if update.message.chat.type != "private":
+        await update.message.reply_text(
+            "🔒 Zəhmət olmasa botun şəxsi mesajına yazaraq oyunu yaradın."
+        )
+        return ConversationHandler.END
 
-    await update.message.reply_text(
-        "🔑 Oyunu yaratmaq üçün şifrə daxil edin.",
-        reply_markup=reply_markup
-    )
-
+    await update.message.reply_text("🔑 Oyunu yaratmaq üçün şifrə daxil edin:")
     return PASSWORD
+
 
 
 
 
 async def check_password(update: Update, context: CallbackContext):
-    """Verifies the entered password and proceeds to next step."""
-
-    query = update.callback_query
-    user_id = query.from_user.id  # İstifadəçinin ID-sini al
-
-    await context.bot.send_message(
-        chat_id=user_id,
-        text="🔒 Zəhmət olmasa şifrəni yazın:"
-    )
-
-    return PASSWORD
+    """Verifies the entered password."""
+    if update.message.text != GAME_CREATION_PASSWORD:
+        await update.message.reply_text("❌ Şifrə yalnışdır! Yenidən cəhd edin.")
+        return ConversationHandler.END
+   
+    await update.message.reply_text("📍 Oyun keçiriləcək məkanı daxil edin:")
+    return LOCATION
 
 
 
 
 
 async def set_location(update: Update, context: CallbackContext):
-    """Sets the game location using inline buttons."""
-
-    keyboard = [
-        [InlineKeyboardButton("📍 Bakı", callback_data="location_baku")],
-        [InlineKeyboardButton("📍 Sumqayıt", callback_data="location_sumqayit")],
-        [InlineKeyboardButton("📍 Gəncə", callback_data="location_gence")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await update.message.reply_text("📍 Oyun keçiriləcək məkanı seçin:", reply_markup=reply_markup)
-    return LOCATION
-
-
-
+    """Sets the game location."""
+    context.user_data["location"] = update.message.text
+    await update.message.reply_text("⏰ Oyun vaxtını daxil edin:")
+    return TIME
 
 async def set_time(update: Update, context: CallbackContext):
     """Sets the game time."""
-    
-    # İstifadəçinin yazdığı mesajı sil
-    await update.message.delete()
-
     context.user_data["time"] = update.message.text
-    await update.message.reply_text("📄 Əlavə məlumatları daxil edin:", reply_markup=ReplyKeyboardRemove())
+    await update.message.reply_text("📄 Əlavə məlumatları daxil edin:")
     return EXTRA_INFO
 
 
 
 
 async def set_extra_info(update: Update, context: CallbackContext):
-    """Final step - confirms the game creation and sends the message to the group."""
+    """Oyun məlumatlarını tamamlayır və bütün qruplara elan edir."""
 
     user_id = update.message.from_user.id
-    chat_id = update.effective_chat.id
-
     context.user_data["extra_info"] = update.message.text
 
     # Oyun məlumatlarını yadda saxla
-    active_games[chat_id] = {
+    active_games[user_id] = {
         "location": context.user_data["location"],
         "time": context.user_data["time"],
         "extra_info": context.user_data["extra_info"],
@@ -148,8 +126,15 @@ async def set_extra_info(update: Update, context: CallbackContext):
         f"📄 Əlavə məlumat: {context.user_data['extra_info']}\n"
     )
 
-    await context.bot.send_message(chat_id=chat_id, text=game_info)
+    # **İstifadəçiyə təsdiq göndər**
+    await update.message.reply_text("✅ Oyun uğurla yaradıldı və bütün qruplara elan edildi!")
+
+    # **Botun olduğu qruplara oyun elanını göndər**
+    for chat_id in context.bot_data.get("groups", []):
+        await context.bot.send_message(chat_id, game_info)
+
     return ConversationHandler.END
+
 
 
 
@@ -225,15 +210,17 @@ async def list_participants(update: Update, context: CallbackContext):
 
 
 async def oyunusil(update: Update, context: CallbackContext):
-    """Aktiv oyunu silmək üçün şifrə tələb edir."""
-    chat_id = update.effective_chat.id  # Qrupun ID-sini al
+    """Oyunu yalnız şəxsi mesajda silməyə icazə verir."""
 
-    if chat_id not in active_games:  # Əgər aktiv oyun yoxdursa
-        await update.message.reply_text("❌ Hal-hazırda silinə biləcək aktiv oyun yoxdur.")
-        return
+    if update.message.chat.type != "private":
+        await update.message.reply_text(
+            "🔒 Zəhmət olmasa botun şəxsi mesajına yazaraq oyunu silin."
+        )
+        return ConversationHandler.END
 
     await update.message.reply_text("🔑 Oyunu silmək üçün şifrəni daxil edin:")
     return "DELETE_PASSWORD"
+
 
 async def check_delete_password(update: Update, context: CallbackContext):
     """Şifrəni yoxlayır və oyunu silir."""
@@ -253,15 +240,17 @@ async def check_delete_password(update: Update, context: CallbackContext):
 
 
 async def oyunubitir(update: Update, context: CallbackContext):
-    """Aktiv oyunu bitirmək üçün şifrə tələb edir və qalib komandanı müəyyənləşdirir."""
-    chat_id = update.effective_chat.id  # Qrupun ID-sini al
+    """Oyunu yalnız şəxsi mesajda bitirməyə icazə verir."""
 
-    if chat_id not in active_games:  # Əgər aktiv oyun yoxdursa
-        await update.message.reply_text("❌ Hazırda bitiriləcək aktiv oyun yoxdur.")
-        return
+    if update.message.chat.type != "private":
+        await update.message.reply_text(
+            "🔒 Zəhmət olmasa botun şəxsi mesajına yazaraq oyunu bitirin."
+        )
+        return ConversationHandler.END
 
     await update.message.reply_text("🔑 Oyunu bitirmək üçün şifrəni daxil edin:")
     return "FINISH_PASSWORD"
+
 
 async def check_finish_password(update: Update, context: CallbackContext):
     """Şifrəni yoxlayır və oyunu bitirmək prosesinə davam edir."""
@@ -329,6 +318,15 @@ async def set_winner_team(update: Update, context: CallbackContext):
     return ConversationHandler.END
 
 
+async def save_group(update: Update, context: CallbackContext):
+    """Botun olduğu qrupları yadda saxlayır."""
+    chat = update.message.chat
+
+    if chat.type in ["group", "supergroup"]:
+        if "groups" not in context.bot_data:
+            context.bot_data["groups"] = set()
+
+        context.bot_data["groups"].add(chat.id)
 
 
 async def bitmishoyunlar(update: Update, context: CallbackContext):
@@ -585,6 +583,7 @@ def main():
 
     # Yeni handleri əsas tətbiqə əlavə et
     application.add_handler(finish_game_handler)
+    application.add_handler(MessageHandler(filters.ChatType.GROUPS, save_group))
    
     application.add_handler(CallbackQueryHandler(join_game, pattern=r"join_game_\d+"))
     application.add_handler(CallbackQueryHandler(leave_game, pattern=r"leave_game_\d+"))
