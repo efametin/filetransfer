@@ -440,7 +440,7 @@ async def funksiyalar(update: Update, context: CallbackContext):
             "🗑 `/qrupunidsi` - Qrupun ID-sinə bax\n"
         )
 
-    await update.message.reply_text(commands_list, parse_mode="Markdown")
+    await update.message.reply_text(commands_list)
 
 
 async def join_game(update: Update, context: CallbackContext):
