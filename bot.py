@@ -101,8 +101,8 @@ async def set_extra_info(update: Update, context: CallbackContext):
     # Oyunu yaradan istifadəçinin ID-sini alırıq
     creator_id = update.effective_user.id  
 
-    # Qrup ID-sini burada qeyd etməliyik (sən bunu öz qrupunun ID-si ilə əvəz edə bilərsən)
-    GROUP_CHAT_ID = -100123456789  # 🔹 **Bura öz qrupunun ID-sini yaz!**
+    # **Qrupun ID-sini təyin edirik**
+    GROUP_CHAT_ID = -1002369357283  # 🔹 **Bura öz qrupunun ID-sini yaz!**
 
     # Oyun detalları
     game_info = (
@@ -125,10 +125,11 @@ async def set_extra_info(update: Update, context: CallbackContext):
     # Oyunu yaradan istifadəçiyə təsdiq mesajı
     await update.message.reply_text("✅ Oyun yaradıldı və qrupa göndərildi!")
 
-    # Oyunu qrupa göndərək
+    # ✅ **Oyun məlumatlarını qrupa göndəririk**
     await context.bot.send_message(GROUP_CHAT_ID, game_info, parse_mode="Markdown")
 
     return ConversationHandler.END
+
 
 
 async def delete_game(update: Update, context: CallbackContext):
