@@ -44,12 +44,26 @@ finished_games_participants = {}
 finished_games = []
 
 async def start(update: Update, context: CallbackContext):
-    """Həmişə sabit mesaj qaytaran sadə `/start` funksiyası."""
-    await update.message.reply_text(
-        "Futbol Bot başladıldı!\n\n"
-        "✅ Artıq botun funksiyalarından istifadə edə bilərsiniz.\n"
-        "📌 Bütün funksiyaları bilmək üçün `/funksiyalar` əmrini istifadə edin!"
+    """Bot `/start` əmri icra edildikdə istifadəçiyə salam verən və məlumat verən funksiya."""
+    
+    # **İstifadəçinin adını və username-i alırıq**
+    user = update.effective_user
+    user_name = user.first_name  # Adını alırıq
+    user_mention = f"@{user.username}" if user.username else user_name  # @username varsa, onu götür, yoxdursa adını
+    
+    # **Botun öz adını alırıq**
+    bot_name = context.bot.first_name  # Botun adı
+
+    # **Mesaj məzmunu**
+    message = (
+        f"Salam {user_mention}! 😊\n"
+        f"Mən {bot_name}, qrupumuzda səni görmək xoşdur! 🎉\n\n"
+        f"FUTB⚽L BOT-u olaraq mənim xüsusiyyətlərimi bilmək üçün `/funksiyalar` yaza bilərsən!"
     )
+
+    # **Reply deyil, adi mesaj göndəririk**
+    await update.message.chat.send_message(message)
+
 
 async def get_chat_id(update: Update, context: CallbackContext):
     """Bu funksiya istifadəçinin və ya qrupun ID-sini qaytarır."""
