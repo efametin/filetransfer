@@ -19,12 +19,12 @@ logger = logging.getLogger(__name__)
 # BOTUN TOKENI
 TOKEN = '7675127420:AAFbt7343zQWIBJ9eiwNxpo46yf6DHGf1Kg'
 
+# **Qrupun ID-sini təyin edirik**
+GROUP_CHAT_ID = -1002369357283  # 🔹 **Bura öz qrupunun ID-sini yaz!**
+GROUP_ADMIN_ID = 1134292718  # Matin A. hesabının ID-sidir..!
 
 # State constants for ConversationHandler
 PASSWORD, LOCATION, TIME, EXTRA_INFO = range(4)
-
-# COMMANDLAR UCUN SIFRELER
-START_PASSWORD = "1234"
 
 # oyunyarat ve oyunubitir parolu
 GAME_CREATION_PASSWORD = "1234"
@@ -100,9 +100,6 @@ async def set_extra_info(update: Update, context: CallbackContext):
 
     # Oyunu yaradan istifadəçinin ID-sini alırıq
     creator_id = update.effective_user.id  
-
-    # **Qrupun ID-sini təyin edirik**
-    GROUP_CHAT_ID = -1002369357283  # 🔹 **Bura öz qrupunun ID-sini yaz!**
 
     # Oyun detalları
     game_info = (
@@ -415,9 +412,12 @@ async def announce_winner(chat_id, application):
 
 
 async def funksiyalar(update: Update, context: CallbackContext):
-    """Shows all available commands in the bot."""
+    """Shows all available commands in the bot, but restricts sensitive commands to a specific user."""
+    user_id = update.effective_user.id  # İstifadəçinin ID-sini alırıq
+
+    # **Hər kəs üçün görünən əmrlər**
     commands_list = (
-        "🤖 Futbol botun mövcud əmrləri:\n\n"
+        "🤖 Futbol botunun mövcud əmrləri:\n\n"
         "🚀 `/start` - Botu başladır\n"
         "🛠 `/funksiyalar` - Bütün əmrləri göstərir\n"
         "⚽ `/oyun` - Aktiv oyunun məlumatlarını göstərir\n"
@@ -425,15 +425,22 @@ async def funksiyalar(update: Update, context: CallbackContext):
         "💅 `/mengelmirem` - Futbola gəlmirəm, evdə dırnağıma lak çəkirəm!\n"
         "📜 `/list` - İştirakçı siyahısını göstərir\n"
         "🔥 `/sesver` - Oyunun ən yaxşı oyunçusuna səs ver (1 saat ərzində)!\n"
+        "🏆 `/bitmishoyunlar` - Bütün bitmiş oyunları göstər\n"
         "🆘 `/komek` - Kömək və əlaqə məlumatları\n"
-        "🏆 `/bitmishoyunlar` - Bütün bitmiş oyunları göstər\n\n"
-        "🔐 Şifrəli əmrlər:\n"
-        "📢 `/oyunyarat` - Yeni oyun yaradır\n"
-        "🏁 `/oyunubitir` - Oyunu bitir və nəticələri qeyd et\n"
-        "🗑 `/oyunusil` - Oyunu sil\n"
-    )
 
-    await update.message.reply_text(commands_list)
+    )
+    
+    if user_id == GROUP_ADMIN_ID:
+        commands_list += (
+            "\n🔐 *Şifrəli əmrlər:*\n"
+            "📢 `/oyunyarat` - Yeni oyun yaradır\n"
+            "🏁 `/oyunubitir` - Oyunu bitir və nəticələri qeyd et\n"
+            "🗑 `/oyunusil` - Oyunu sil\n"
+            "🗑 `/qrupunidsi` - Qrupun ID-sinə bax\n"
+        )
+
+    await update.message.reply_text(commands_list, parse_mode="Markdown")
+
 
 async def join_game(update: Update, context: CallbackContext):
     """Handles a user joining the game via button."""
@@ -520,7 +527,7 @@ def main():
     application = Application.builder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("id", get_chat_id))
+    application.add_handler(CommandHandler("qrupunidsi", get_chat_id))
     application.add_handler(CommandHandler("oyun", oyun, filters=filters.ChatType.GROUPS | filters.ChatType.PRIVATE))
 
     game_handler = ConversationHandler(
