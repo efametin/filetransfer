@@ -51,6 +51,10 @@ async def start(update: Update, context: CallbackContext):
         "📌 Bütün funksiyaları bilmək üçün `/funksiyalar` əmrini istifadə edin!"
     )
 
+async def get_chat_id(update: Update, context: CallbackContext):
+    """Bu funksiya istifadəçinin və ya qrupun ID-sini qaytarır."""
+    chat_id = update.message.chat.id
+    await update.message.reply_text(f"Bu chatın ID-si: `{chat_id}`", parse_mode="Markdown")
 
 async def error_handler(update: Update, context: CallbackContext):
     logger.error(f"Update {update} caused error {context.error}")
@@ -67,13 +71,6 @@ async def oyun_yarat(update: Update, context: CallbackContext):
 
     await update.message.reply_text("🔑 Oyunu yaratmaq üçün şifrə daxil edin:")
     return PASSWORD
-
-async def get_chat_id(update: Update, context: CallbackContext):
-    """Bu funksiya istifadəçinin və ya qrupun ID-sini qaytarır."""
-    chat_id = update.message.chat.id
-    await update.message.reply_text(f"Bu chatın ID-si: `{chat_id}`", parse_mode="Markdown")
-
-application.add_handler(CommandHandler("id", get_chat_id))
 
 async def check_password(update: Update, context: CallbackContext):
     """Verifies the entered password."""
