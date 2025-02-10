@@ -108,9 +108,10 @@ async def set_extra_info(update: Update, context: CallbackContext):
         f"⏰ Vaxt: {context.user_data['time']}\n"
         f"📄 Əlavə Məlumat: {context.user_data['extra_info']}\n"
         f"👤 Təşkilatçı: [{update.effective_user.first_name}](tg://user?id={creator_id})\n\n"
-        f"⚠️ Oyunda iştirak etmək üçün `/oyunagelirem` əmrini, iştirak etməkdən imtina üçün  `/mengelmirem` əmrini yazın qrupa. 
-        Təşkil edilmiş futbol matçında iştirak edəcək şəxslərin listinə baxmaq üçün qrupa `/list` yazaraq qrupa göndərin. 
-        Digər bütün funksiyalar üçün isə, `/funksiyalar` yazaraq göndərib baxa bilərsiniz.."""
+        f"⚠️ Oyunda iştirak etmək üçün `/oyunagelirem` əmrini, "
+        f"iştirak etməkdən imtina üçün `/mengelmirem` əmrini yazın qrupa.\n"
+        f"Təşkil edilmiş futbol matçında iştirak edəcək şəxslərin listinə baxmaq üçün qrupa `/list` yazaraq göndərin.\n"
+        f"Digər bütün funksiyalar üçün isə, `/funksiyalar` yazaraq göndərib baxa bilərsiniz..\n"
     )
 
     # Oyunu yadda saxlayaq
