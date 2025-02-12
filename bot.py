@@ -679,7 +679,7 @@ async def oyunagelirem(update: Update, context: CallbackContext):
         await komanda_qur(update, context)
 
 
-    async def mengelmirem(update: Update, context: CallbackContext):
+async def mengelmirem(update: Update, context: CallbackContext):
     """Handles a user leaving the game via /mengelmirem command."""
     chat_id = update.effective_chat.id  # Qrupun ID-sini al
     user_id = update.effective_user.id  # İstifadəçinin ID-sini al
