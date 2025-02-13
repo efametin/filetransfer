@@ -207,40 +207,25 @@ async def komanda_qur(update: Update, context: CallbackContext):
     )
 
     await context.bot.send_message(chat_id, message, parse_mode="Markdown")
- 
+
+
 async def oyun(update: Update, context: CallbackContext):
-    """Hazırda aktiv oyunun məlumatlarını göstərir. 
-    - Bot qrupda mesajı reply etmədən göndərir.
-    - İstifadəçilər 10 dəqiqədən bir çağır bilər.
-    - Botun öz çağırışları məhdudlaşdırılmır.
-    """
+    """Shows the details of the currently active game."""
     chat_id = update.effective_chat.id
-    user_id = update.effective_user.id  # İstifadəçinin ID-si
-    current_time = time.time()  # İndiki timestamp (Unix vaxtı)
-
-    # Əgər bot öz-özünə bu funksiyanı çağırıbsa, məhdudiyyət tətbiq etmirik
-    if not update.effective_user.is_bot:
-        # Əgər istifadəçi son 10 dəqiqə ərzində bu əmri çağırıbsa, bot cavab vermir
-        if user_id in user_game_request_times and (current_time - user_game_request_times[user_id]) < 60:
-            return  # Heç bir reaksiya vermirik
-
-        # Yeni çağırma vaxtını yadda saxlayırıq
-        user_game_request_times[user_id] = current_time  
 
     if chat_id not in active_games:
-        return  # Qrupda oyun yoxdursa, heç nə göndərmirik
+        await update.message.reply_text("❌ Hazırda yaradılmış oyun yoxdur.")
+        return
 
     game = active_games[chat_id]
     game_info = (
-        f"⚽ Gələcək Futbol Oyunumuz ⚽\n"
-        f"📍 Oyunun yeri: {game['location']}\n"
-        f"⏰ Başlama vaxtı: {game['time']}\n"
-        f"📄 Əlavə məlumat: {game['extra_info']}\n\n"
-        f"Bu oyunda səni görmək xoş olar. Oyuna gəlmək istəsən `/gelirem` yazaraq matça qoşula bilərsən! ⚽"
+        f"🎮 Növbəti Oyunumuz:\n\n"
+        f"📍 Məkan: {game['location']}\n"
+        f"⏰ Vaxt: {game['time']}\n"
+        f"📄 Əlavə məlumat: {game['extra_info']}\n"
     )
 
-    # **Mesajı adi mesaj kimi göndəririk, reply olaraq yox!**
-    await context.bot.send_message(chat_id=chat_id, text=game_info)
+    await update.message.reply_text(game_info)
 
 
 
